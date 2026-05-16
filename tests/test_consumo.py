@@ -32,14 +32,15 @@ class TestAquecimento(unittest.TestCase):
 class TestConsumoAtual(unittest.TestCase):
 
     def test_consumo_modo_adequado_modulo_sem_termico(self):
-        comando = encontrar_modulo(1)  # fator_termico=0, modo_atual="adequado", consumo=8
+        comando = encontrar_modulo(1)  # fator_termico=0, consumo[adequado]=8
+        comando["modo_atual"] = "adequado"
         clima = {"temperatura_c": -70}
         self.assertEqual(consumo_atual_kw(comando, clima), 8)
 
     def test_consumo_modo_desligado_sem_termico(self):
         oficina = encontrar_modulo(11)
-        # fator_termico = 0.2, modo_atual = "desligado"
-        # Mesmo desligado, aquece — mas a -50°C ainda dá clamp 0
+        oficina["modo_atual"] = "desligado"
+        # fator_termico = 0.2; mesmo desligado, aquece — mas a -50°C ainda dá clamp 0
         clima = {"temperatura_c": -50}
         self.assertEqual(consumo_atual_kw(oficina, clima), 0)
 
