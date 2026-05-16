@@ -47,54 +47,54 @@ Cobrir os 4 itens do enunciado oficial em um único sistema funcional:
 ## Como executar o simulador
 
 ```bash
-# Execução padrão (determinística, 168 passos = 7 sóis × 24h)
 python3 main.py
-
-# Modo não-determinístico (usa entropia do sistema; resultados variam a cada run)
-python3 main.py --random
-
-# Horizonte curto (por exemplo 48 passos = 2 sóis)
-python3 main.py --horizon 48
-
-# Seed customizada (para reproduzir um cenário específico)
-python3 main.py --seed 7
-
-# Gravar histórico passo-a-passo em arquivo de texto
-python3 main.py --log-file data/colony_log.txt
-
-# Saída enxuta (sem árvores)
-python3 main.py --quiet
 ```
 
-**Dependências:** nenhuma externa — usa apenas `math`, `random`, `collections.deque` e `argparse` da biblioteca padrão.
-
-### Saída de exemplo (`seed=42`, padrão)
-
-O programa imprime as duas hierarquias, roda 7 sóis marcianos e mostra:
+O programa abre um **menu interativo** com 9 opções:
 
 ```
-Passos simulados: 168
-Geração total média: 92.6 kW
-Consumo total médio: 93.4 kW
-Bateria final: 103.6 / 500.0 kWh
-Passos com tempestade: 142 de 168
-Passos com alerta: 0
+=========================================================
+  Configuração: seed=42 | horizonte=168
+  Estado: (sem simulação ainda)
+---------------------------------------------------------
+  [1] Rodar simulação
+  [2] Configurar seed (determinístico/aleatório)
+  [3] Configurar horizonte (em horas)
+  [4] Mostrar hierarquias da colônia (item 1.1)
+  [5] Resumo numérico da simulação
+  [6] Regras de decisão (item 1.2)
+  [7] Previsão eólica via regressão linear (item 1.3)
+  [8] Análise de balanço energético (item 1.4)
+  [9] Salvar log da simulação em arquivo
+  [0] Sair
+=========================================================
+Escolha uma opção:
+```
 
-Balanço médio do período:
-  status: risk
-  delta médio: -0.9 kW
-  mensagem: ALERTA: consumo maior que geração
+**Fluxo típico:** configurar seed/horizonte (opções 2 e 3 — opcionais, defaults já cobrem o enunciado), rodar a simulação (1), depois navegar pelos itens 4–9 para explorar os resultados sem precisar rodar de novo.
 
-Regras de decisão (último passo):
-  entrada: energia=83.7 kW, consumo=80.5 kW, tempestade=light
-  → (nenhum alerta — operação saudável)
+**Dependências:** nenhuma externa — apenas `math`, `random` e `collections.deque` da biblioteca padrão. Sem `argparse`, sem CLI flags, dentro do espírito do enunciado ("Não é necessário utilizar bibliotecas avançadas").
 
-Previsão eólica (regressão linear sobre o histórico):
+### Saída de exemplo (após rodar a simulação)
+
+```
+Rodando simulação (seed=42, horizonte=168 passos)...
+[OK] 168 passos simulados.
+     Geração média: 92.6 kW
+     Consumo médio: 93.4 kW
+     Bateria final: 103.6/500.0 kWh
+```
+
+Explorando o item 1.3 (previsão eólica):
+
+```
+--- Previsão eólica (item 1.3) ---
   reta ajustada: y = 2.500·v - 7.500
-  para v = 11.0 m/s → previsão ≈ 20.0 kW
+  vento (m/s) para prever [11]: 11
+  -> para v = 11 m/s, energia eólica prevista ≈ 20.0 kW
 ```
 
-> A reta ajustada `y = 2.5·v - 7.5` recupera quase exatamente o modelo físico interno da geração eólica. Isso é proposital — demonstra que a regressão linear manual funciona corretamente sobre os dados reais do simulador.
+> A reta `y = 2.5·v - 7.5` recupera quase exatamente o modelo físico interno da geração eólica. Isso é proposital — demonstra que a regressão linear manual funciona corretamente sobre os dados reais do simulador.
 
 ## Exemplos do enunciado (entrada → saída)
 

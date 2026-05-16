@@ -108,7 +108,7 @@ def step(climate, battery, history, trees, storm_state, last_wind_24h):
         climate["sol"] += 1
 
 
-def run_simulation(seed=42, horizon=TOTAL_STEPS):
+def run_simulation(seed: int | None = 42, horizon: int = TOTAL_STEPS):
     """Runs the simulator for `horizon` steps. Returns (climate, battery, history).
 
     seed=42 (default): deterministic run (used by tests).

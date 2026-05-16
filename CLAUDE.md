@@ -20,7 +20,7 @@ Documentação técnica em:
 
 ## Tech stack
 
-Python 3.12, **stdlib apenas** (`math`, `random`, `collections.deque`, `argparse`), `unittest` da stdlib para testes. Sem `pyproject.toml`, sem `requirements.txt`, sem virtualenv obrigatório. Restrição vem do enunciado: "Não é necessário utilizar bibliotecas avançadas".
+Python 3.12, **stdlib apenas** (`math`, `random`, `collections.deque`), `unittest` da stdlib para testes. Sem `pyproject.toml`, sem `requirements.txt`, sem virtualenv obrigatório. Restrição vem do enunciado: "Não é necessário utilizar bibliotecas avançadas". O `main.py` não usa `argparse` — entrada é via menu interativo com `input()`, para ficar dentro do espírito do enunciado.
 
 ## Convenção de idioma
 
@@ -35,19 +35,8 @@ Warnings cSpell para palavras como `Siger`, `Aurora`, `ECLSS`, `ISRU` são falso
 ## Common commands
 
 ```bash
-# Roda o simulador end-to-end (imprime árvores + resumo de 168 passos + alertas + previsão)
+# Roda o menu interativo do AURORA CORE
 python3 main.py
-
-# Modos não-determinísticos / horizonte curto
-python3 main.py --random
-python3 main.py --horizon 48
-python3 main.py --seed 7
-
-# Gravar log textual em arquivo
-python3 main.py --log-file data/colony_log.txt
-
-# Saída enxuta (sem árvores)
-python3 main.py --quiet
 
 # Suíte completa (119 testes, <1s)
 python3 -m unittest discover -v
