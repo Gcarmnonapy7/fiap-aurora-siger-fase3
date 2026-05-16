@@ -11,6 +11,21 @@ HORIZON_SOLS = 7
 HOURS_PER_SOL = 24
 TOTAL_STEPS = HORIZON_SOLS * HOURS_PER_SOL  # 168
 
+# Criticality tiers (highest priority first).
+# Single source of truth used by hierarchies, allocation policy, and decision rules.
+CRITICALITY_LEVELS = ("Vital", "Sustenance", "Expansion")
+
+# Module types that produce energy. The policy never downgrades these.
+GENERATOR_TYPES = ("solar_generator", "wind_generator", "nuclear_generator")
+
+# Per-step series collected by the simulator. Kept aligned by index across keys.
+HISTORY_KEYS = (
+    "wind_ms", "temperature_c", "storm", "tau",
+    "solar_generation_kw", "wind_generation_kw", "nuclear_generation_kw",
+    "total_generation_kw", "total_consumption_kw",
+    "battery_charge_kwh", "modes_summary", "alerts",
+)
+
 # --- Wind ---
 V_BASE = 2.5
 V_AMPLITUDE = 7.0

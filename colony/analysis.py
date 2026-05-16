@@ -15,6 +15,8 @@ Three responsibilities:
 import os
 from datetime import datetime
 
+from colony.constants import HOURS_PER_SOL
+
 SURPLUS_MARGIN = 1.10  # generation must exceed consumption by 10% to be "surplus"
 
 STATUS_RISK = "risk"
@@ -23,11 +25,15 @@ STATUS_BALANCED = "balanced"
 
 MSG_RISK = "ALERTA: consumo maior que geração"
 MSG_SURPLUS = "SUGESTÃO: armazenar energia excedente"
-MSG_BALANCED = "BALANCEADO"
+MSG_BALANCED = "INFO: balanceado"
 
 # Order used to render mixed climate regimes from least to worst severity.
 STORM_SEVERITY = ["clear", "light", "moderate", "severe"]
-HOURS_PER_SOL = 24
+
+
+def _safe_share(value, total):
+    """Returns value/total, or 0.0 if total is zero. Avoids ZeroDivisionError."""
+    return value / total if total > 0 else 0.0
 
 
 def analyze_balance(generation_kw, consumption_kw):
@@ -110,11 +116,10 @@ def generation_breakdown(history):
     wind_avg = sum(history["wind_generation_kw"]) / n
     nuclear_avg = sum(history["nuclear_generation_kw"]) / n
     total = solar_avg + wind_avg + nuclear_avg
-    share = (lambda v: v / total) if total > 0 else (lambda v: 0.0)
     return {
-        "solar":   {"avg_kw": solar_avg,   "share": share(solar_avg)},
-        "wind":    {"avg_kw": wind_avg,    "share": share(wind_avg)},
-        "nuclear": {"avg_kw": nuclear_avg, "share": share(nuclear_avg)},
+        "solar":   {"avg_kw": solar_avg,   "share": _safe_share(solar_avg, total)},
+        "wind":    {"avg_kw": wind_avg,    "share": _safe_share(wind_avg, total)},
+        "nuclear": {"avg_kw": nuclear_avg, "share": _safe_share(nuclear_avg, total)},
     }
 
 

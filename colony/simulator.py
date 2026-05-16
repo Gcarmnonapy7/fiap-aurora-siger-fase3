@@ -15,18 +15,18 @@ from colony.constants import (
 )
 from colony.state import initial_state
 from colony.generation import generate_solar, generate_wind, generate_nuclear
-from colony.hierarchies import build_functional_tree, build_criticality_tree
+from colony.hierarchies import build_criticality_tree
 from colony.modules import MODULES
 
 
-def _detail_generation(functional_tree, climate):
-    """Returns {kind: kW} for history bookkeeping."""
-    energy = functional_tree.find("Energy")
+def _detail_generation(climate):
+    """Returns {kind: kW} for history bookkeeping.
+
+    Iterates MODULES directly — generation only depends on each module's
+    type, not on its position in any hierarchy.
+    """
     detail = {"solar": 0.0, "wind": 0.0, "nuclear": 0.0}
-    for node in energy.traverse_dfs():
-        if not node.is_leaf():
-            continue
-        m = node.module
+    for m in MODULES:
         if m["type"] == "solar_generator":
             detail["solar"] += generate_solar(m, climate)
         elif m["type"] == "wind_generator":
@@ -36,9 +36,19 @@ def _detail_generation(functional_tree, climate):
     return detail
 
 
-def step(climate, battery, history, trees, storm_state, last_wind_24h):
-    """Advances the simulation by 1 hour. Mutates climate/battery/history/MODULES in place."""
-    functional, criticality = trees
+def step(state):
+    """Advances the simulation by 1 hour. Mutates `state` in place.
+
+    `state` keys: climate, battery, history, criticality_tree,
+    storm_state, last_wind_24h.
+    """
+    climate = state["climate"]
+    battery = state["battery"]
+    history = state["history"]
+    criticality = state["criticality_tree"]
+    storm_state = state["storm_state"]
+    last_wind_24h = state["last_wind_24h"]
+
     sol = climate["sol"]
     hour = climate["hour"]
 
@@ -62,7 +72,7 @@ def step(climate, battery, history, trees, storm_state, last_wind_24h):
     climate["tau"] = tau
 
     # 2. Generation
-    detail = _detail_generation(functional, climate)
+    detail = _detail_generation(climate)
     total_generation = detail["solar"] + detail["wind"] + detail["nuclear"]
 
     # 3. Supply (generation + battery available above reserve)
@@ -75,7 +85,10 @@ def step(climate, battery, history, trees, storm_state, last_wind_24h):
     # 5. Total consumption
     total_consumption = sum(current_consumption_kw(m, climate) for m in MODULES)
 
-    # 6. Battery balance
+    # 6. Battery balance — clamped to [0, max]. The emergency reserve is
+    # preserved by construction in stages 1–3 (supply ignores below-reserve
+    # charge); only stage-4 emergencies can dip below it, and those hours
+    # always carry an EMERGÊNCIA alert (see step 7).
     balance = total_generation - total_consumption
     battery["current_charge_kwh"] = max(0, min(
         battery["max_capacity_kwh"],
@@ -118,11 +131,16 @@ def run_simulation(seed: int | None = 42, horizon: int = TOTAL_STEPS):
         random.seed(seed)
 
     climate, battery, history = initial_state()
-    trees = (build_functional_tree(), build_criticality_tree())
-    storm_state = StormState()
-    last_wind_24h = deque(maxlen=24)
+    state = {
+        "climate": climate,
+        "battery": battery,
+        "history": history,
+        "criticality_tree": build_criticality_tree(),
+        "storm_state": StormState(),
+        "last_wind_24h": deque(maxlen=24),
+    }
 
     for _ in range(horizon):
-        step(climate, battery, history, trees, storm_state, last_wind_24h)
+        step(state)
 
     return climate, battery, history

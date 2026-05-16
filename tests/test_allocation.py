@@ -3,6 +3,7 @@
 import unittest
 
 from colony.allocation import allocate_energy
+from colony.constants import GENERATOR_TYPES
 from colony.modules import MODULES, find_module
 from colony.hierarchies import build_criticality_tree
 
@@ -23,7 +24,7 @@ class TestAllocation(unittest.TestCase):
         climate = {"temperature_c": 0}
         allocate_energy(self.tree, supply_kw=500.0, climate=climate)
         for m in MODULES:
-            if m["type"] in ("solar_generator", "wind_generator", "nuclear_generator"):
+            if m["type"] in GENERATOR_TYPES:
                 self.assertEqual(m["current_mode"], "adequate")
                 continue
             self.assertIn(m["current_mode"], ("adequate", "surplus"))

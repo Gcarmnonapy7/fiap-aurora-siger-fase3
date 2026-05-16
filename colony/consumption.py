@@ -22,9 +22,10 @@ def heating_consumption_kw(external_temperature, thermal_factor):
     Q_gain   = INTERNAL_GAIN_W * thermal_factor
     Q_net    = max(0, Q_loss - Q_gain)
     Q_elec   = Q_net / eta_heater
+
+    Modules with thermal_factor == 0 naturally yield 0 because every term
+    in the numerator is scaled by it — no special-casing needed.
     """
-    if thermal_factor == 0:
-        return 0
     delta_t = max(0, T_TARGET_INTERNAL - external_temperature)
     loss_W = U_INSULATION * A_ENVELOPE * delta_t * thermal_factor
     net_W = max(0, loss_W - INTERNAL_GAIN_W * thermal_factor)

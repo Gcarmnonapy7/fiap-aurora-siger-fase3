@@ -66,8 +66,17 @@ def fit_wind_power_model(history):
     return linear_regression(xs, ys)
 
 
+def wind_power_forecast(a, b, wind_ms):
+    """Predicts wind power for `wind_ms` using the fitted line, clamped to ≥ 0.
+
+    The clamp encodes domain knowledge: physical wind power has a cut-in
+    around 3 m/s, so values below the linear region produce negative
+    predictions that must round to zero.
+    """
+    return max(0.0, predict(a, b, wind_ms))
+
+
 def predict_next_wind_power(history, wind_forecast_ms):
-    """Fits and predicts in a single call. Clamps the result to be non-negative
-    (the underlying wind power model has a cut-in at 3 m/s)."""
+    """Fits and forecasts in a single call. Convenience wrapper."""
     a, b = fit_wind_power_model(history)
-    return max(0.0, predict(a, b, wind_forecast_ms))
+    return wind_power_forecast(a, b, wind_forecast_ms)

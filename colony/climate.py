@@ -67,10 +67,11 @@ class StormState:
         self.state = "clear"
         self.hours_remaining = 0
 
-    def _start_probability(self, klass, wind_max_24h, sol):
+    def _start_probability(self, klass, wind_max_24h):
+        # The whole 7-sol horizon is treated as perihelion by construction —
+        # the bonus applies uniformly.
         prob = BASE_PROB_PER_SOL[klass]
         wind_bonus = max(0.0, (wind_max_24h - WIND_BONUS_THRESHOLD) / 10.0)
-        # perihelion: simple approximation — sols 0..6 are "perihelion" by construction
         return prob * (1 + wind_bonus) * PERIHELION_FACTOR
 
     def advance(self, wind_max_24h, sol, hour, force_event=False):
@@ -91,7 +92,7 @@ class StormState:
         # current state = clear: roll to see if a new storm starts.
         # one roll per hour; per-sol probability divided by 24 → per-hour probability.
         for klass in ("severe", "moderate", "light"):  # rarest first
-            hour_prob = self._start_probability(klass, wind_max_24h, sol) / 24.0
+            hour_prob = self._start_probability(klass, wind_max_24h) / 24.0
             if random.random() < hour_prob:
                 self.state = klass
                 min_h, max_h = DURATION_HOURS[klass]

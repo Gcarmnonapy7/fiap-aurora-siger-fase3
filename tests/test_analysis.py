@@ -81,7 +81,8 @@ class TestWriteLog(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "log.txt")
             write_log(history, path, seed=42)
-            content = open(path).read()
+            with open(path) as f:
+                content = f.read()
             self.assertIn("seed=42", content)
             self.assertIn("3 hours", content)
             self.assertIn("Aurora Siger", content)
@@ -91,7 +92,8 @@ class TestWriteLog(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "log.txt")
             write_log(history, path, seed=None)
-            self.assertIn("seed=random", open(path).read())
+            with open(path) as f:
+                self.assertIn("seed=random", f.read())
 
     def test_subsequent_calls_append_instead_of_overwrite(self):
         _, _, history_a = run_simulation(seed=1, horizon=2)
@@ -100,7 +102,8 @@ class TestWriteLog(unittest.TestCase):
             path = os.path.join(tmp, "log.txt")
             write_log(history_a, path, seed=1)
             write_log(history_b, path, seed=2)
-            content = open(path).read()
+            with open(path) as f:
+                content = f.read()
             self.assertIn("seed=1", content)
             self.assertIn("seed=2", content)
             # Two header lines (===) → two blocks preserved.

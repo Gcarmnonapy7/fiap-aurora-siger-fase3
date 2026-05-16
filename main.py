@@ -18,7 +18,7 @@ from colony.analysis import (
 from colony.constants import TOTAL_STEPS
 from colony.decision import evaluate_rules
 from colony.hierarchies import build_functional_tree, build_criticality_tree
-from colony.prediction import fit_wind_power_model, predict
+from colony.prediction import fit_wind_power_model, wind_power_forecast
 from colony.simulator import run_simulation
 
 
@@ -155,12 +155,13 @@ def cmd_decision_rules(session: SessionState) -> None:
         print("  -> (nenhum alerta — operação saudável)")
 
 
-WIND_PRESETS = [
-    ("1", "Vento fraco",          5),
-    ("2", "Vento típico",         8),
-    ("3", "Vento forte",         11),
-    ("4", "Vento de saturação",  15),
-]
+WIND_PRESETS = {
+    "1": ("Vento fraco",          5),
+    "2": ("Vento típico",         8),
+    "3": ("Vento forte",         11),
+    "4": ("Vento de saturação",  15),
+}
+CUSTOM_WIND_KEY = "5"
 
 
 def cmd_wind_prediction(session: SessionState) -> None:
@@ -178,18 +179,17 @@ def cmd_wind_prediction(session: SessionState) -> None:
     print(f"Reta ajustada: y = {a:.3f}·v {sign} {abs(b):.3f}\n")
 
     print("Escolha o cenário de vento:")
-    for key, label, value in WIND_PRESETS:
+    for key, (label, value) in WIND_PRESETS.items():
         print(f"  [{key}] {label:<20} (v = {value} m/s)")
-    print("  [5] Digitar valor customizado")
+    print(f"  [{CUSTOM_WIND_KEY}] Digitar valor customizado")
 
-    valid = {k for k, _, _ in WIND_PRESETS} | {"5"}
-    choice = prompt_choice("Escolha: ", valid)
-    if choice == "5":
+    choice = prompt_choice("Escolha: ", set(WIND_PRESETS) | {CUSTOM_WIND_KEY})
+    if choice == CUSTOM_WIND_KEY:
         wind = prompt_int("Vento (m/s)", default=11, minimum=0)
     else:
-        wind = next(v for k, _, v in WIND_PRESETS if k == choice)
+        _, wind = WIND_PRESETS[choice]
 
-    forecast = max(0.0, predict(a, b, wind))
+    forecast = wind_power_forecast(a, b, wind)
     print(f"  -> v = {wind} m/s -> energia eólica prevista = {forecast:.1f} kW")
 
 
@@ -282,14 +282,15 @@ MENU = [
 
 def print_menu(session: SessionState) -> None:
     status = "(sem simulação ainda)" if not session.has_simulation() else f"({session.horizon} horas simuladas)"
-    print()
-    print("=" * 57)
-    print(f"  Configuração: seed={session.seed_label()} | horizonte={session.horizon}")
-    print(f"  Estado: {status}")
-    print("-" * 57)
-    for key, label, _ in MENU:
-        print(f"  [{key}] {label}")
-    print("=" * 57)
+    options = "\n".join(f"  [{key}] {label}" for key, label, _ in MENU)
+    print(
+        f"\n{'=' * 57}\n"
+        f"  Configuração: seed={session.seed_label()} | horizonte={session.horizon}\n"
+        f"  Estado: {status}\n"
+        f"{'-' * 57}\n"
+        f"{options}\n"
+        f"{'=' * 57}"
+    )
 
 
 def main() -> None:

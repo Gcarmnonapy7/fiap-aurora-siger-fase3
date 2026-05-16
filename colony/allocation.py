@@ -11,10 +11,8 @@ Stage 4: emergency — critical alert (battery reserve handled outside
 this function, in state.py / simulator.py).
 """
 
+from colony.constants import CRITICALITY_LEVELS, GENERATOR_TYPES
 from colony.consumption import heating_consumption_kw
-
-
-GENERATORS = ("solar_generator", "wind_generator", "nuclear_generator")
 
 
 def _consumption_at_mode(module, mode, climate):
@@ -31,7 +29,7 @@ def _leaves_by_level(tree):
     for level_child in tree.children:
         consumers = []
         for m in level_child.leaves():
-            (generators if m["type"] in GENERATORS else consumers).append(m)
+            (generators if m["type"] in GENERATOR_TYPES else consumers).append(m)
         # sort by id (smaller = higher priority) for consistent tie-breaking
         consumers.sort(key=lambda m: m["id"])
         levels[level_child.name] = consumers
@@ -46,7 +44,7 @@ def allocate_energy(criticality_tree, supply_kw, climate):
     policy would under-estimate demand and silently violate supply.
     """
     levels, generators = _leaves_by_level(criticality_tree)
-    everyone = levels["Vital"] + levels["Sustenance"] + levels["Expansion"]
+    everyone = [m for level in CRITICALITY_LEVELS for m in levels[level]]
 
     # Stage 1: everyone at 'adequate'
     for m in everyone:
@@ -65,8 +63,8 @@ def allocate_energy(criticality_tree, supply_kw, climate):
                 remaining -= delta
         return
 
-    # Stage 2: downgrade bottom-up
-    for level_name in ("Expansion", "Sustenance", "Vital"):
+    # Stage 2: downgrade bottom-up across every level (Vital included as last resort).
+    for level_name in reversed(CRITICALITY_LEVELS):
         for m in reversed(levels[level_name]):  # lowest priority first = highest id first
             if cost <= supply_kw:
                 return
@@ -78,8 +76,8 @@ def allocate_energy(criticality_tree, supply_kw, climate):
     if cost <= supply_kw:
         return
 
-    # Stage 3: shut off bottom-up (Vital never)
-    for level_name in ("Expansion", "Sustenance"):
+    # Stage 3: shut off bottom-up across every level except Vital.
+    for level_name in reversed(CRITICALITY_LEVELS[1:]):
         for m in reversed(levels[level_name]):
             if cost <= supply_kw:
                 return

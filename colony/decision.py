@@ -9,6 +9,8 @@ Inputs are snapshots (plain dicts), so the module has no dependency on
 the simulator runtime — it can be evaluated against any data source.
 """
 
+from colony.constants import CRITICALITY_LEVELS
+
 LOW_ENERGY_THRESHOLD_KW = 50.0
 HIGH_CONSUMPTION_THRESHOLD_KW = 70.0
 STORM_ALERT_LEVELS = ("moderate", "severe")
@@ -34,8 +36,8 @@ def evaluate_rules(snapshot):
     actions = []
     if energy < LOW_ENERGY_THRESHOLD_KW:
         actions.append(ACTION_REDUCE)
-    if energy < LOW_ENERGY_THRESHOLD_KW and consumption > HIGH_CONSUMPTION_THRESHOLD_KW:
-        actions.append(ACTION_ECONOMY)
+        if consumption > HIGH_CONSUMPTION_THRESHOLD_KW:
+            actions.append(ACTION_ECONOMY)
     if consumption > energy:
         actions.append(ACTION_EMERGENCY)
     if storm in STORM_ALERT_LEVELS:
@@ -45,4 +47,4 @@ def evaluate_rules(snapshot):
 
 def priority_order():
     """Returns the priority order of system tiers (highest first)."""
-    return ["Vital", "Sustenance", "Expansion"]
+    return list(CRITICALITY_LEVELS)
