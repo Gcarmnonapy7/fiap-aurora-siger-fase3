@@ -10,7 +10,11 @@ explore the four assignment items:
 Uses only built-ins (`input`, `print`) — no argparse or external libraries.
 """
 
-from colony.analysis import analyze_balance, summarize_history, write_log
+from colony.analysis import (
+    analyze_balance, summarize_history, write_log,
+    aggregate_by_sol, status_distribution,
+    generation_breakdown, critical_moments,
+)
 from colony.constants import TOTAL_STEPS
 from colony.decision import evaluate_rules
 from colony.hierarchies import build_functional_tree, build_criticality_tree
@@ -194,15 +198,51 @@ def cmd_balance_analysis(session: SessionState) -> None:
     if history is None:
         print(NO_SIM_MSG)
         return
-    print("\n--- Análise de balanço energético (item 1.4) ---")
+
     s = summarize_history(history)
-    avg = analyze_balance(s["avg_generation_kw"], s["avg_consumption_kw"])
-    last = analyze_balance(
-        history["total_generation_kw"][-1],
-        history["total_consumption_kw"][-1],
-    )
-    print(f"  média do período  : delta={avg['delta_kw']:+.1f} kW | {avg['status']:<8} | {avg['message']}")
-    print(f"  último passo      : delta={last['delta_kw']:+.1f} kW | {last['status']:<8} | {last['message']}")
+    overall = analyze_balance(s["avg_generation_kw"], s["avg_consumption_kw"])
+
+    print("\n--- Análise de balanço energético (item 1.4) ---\n")
+
+    print(f"Agregados ({s['total_steps']} horas):")
+    print(f"  geração:  {s['avg_generation_kw']:6.1f} kW (méd) | "
+          f"{s['min_generation_kw']:5.1f} (min) | {s['max_generation_kw']:5.1f} (max)")
+    print(f"  consumo:  {s['avg_consumption_kw']:6.1f} kW (méd) | "
+          f"{min(history['total_consumption_kw']):5.1f} (min) | "
+          f"{max(history['total_consumption_kw']):5.1f} (max)")
+    print(f"  delta médio: {overall['delta_kw']:+.1f} kW | {overall['message']}")
+
+    print("\nPor sol marciano:")
+    print("  sol  ger.méd   con.méd    delta    regime climático")
+    for row in aggregate_by_sol(history):
+        marker = "" if row["hours"] == 24 else f" (parcial: {row['hours']}h)"
+        print(f"  {row['sol']:>3} {row['avg_generation_kw']:7.1f} kW {row['avg_consumption_kw']:7.1f} kW "
+              f"{row['avg_delta_kw']:+7.1f}   {row['regime']}{marker}")
+
+    print("\nDistribuição de status:")
+    dist = status_distribution(history)
+    total_h = s["total_steps"] or 1
+    for label in ("risk", "balanced", "surplus"):
+        h = dist[label]
+        pct = h / total_h * 100
+        print(f"  {label:<8} : {h:>4} horas ({pct:4.1f}%)")
+
+    print("\nGeração por fonte (média):")
+    bd = generation_breakdown(history)
+    for label, key in (("solar  ", "solar"), ("eólica ", "wind"), ("nuclear", "nuclear")):
+        kw = bd[key]["avg_kw"]
+        share = bd[key]["share"] * 100
+        print(f"  {label}: {kw:6.1f} kW ({share:4.1f}%)")
+
+    cm = critical_moments(history)
+    if cm["worst_deficit"] is not None:
+        wd = cm["worst_deficit"]
+        bs = cm["biggest_surplus"]
+        print("\nMomentos críticos:")
+        print(f"  pior déficit : sol {wd['sol']} hora {wd['hour']:02d} -> "
+              f"{wd['delta_kw']:+.1f} kW (storm={wd['storm']})")
+        print(f"  maior surplus: sol {bs['sol']} hora {bs['hour']:02d} -> "
+              f"{bs['delta_kw']:+.1f} kW (storm={bs['storm']})")
 
 
 def cmd_save_log(session: SessionState) -> None:

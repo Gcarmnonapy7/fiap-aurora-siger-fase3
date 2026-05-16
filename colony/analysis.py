@@ -22,6 +22,10 @@ MSG_RISK = "ALERTA: consumo maior que geração"
 MSG_SURPLUS = "SUGESTÃO: armazenar energia excedente"
 MSG_BALANCED = "BALANCEADO"
 
+# Order used to render mixed climate regimes from least to worst severity.
+STORM_SEVERITY = ["clear", "light", "moderate", "severe"]
+HOURS_PER_SOL = 24
+
 
 def analyze_balance(generation_kw, consumption_kw):
     """Classifies the instantaneous balance into risk/surplus/balanced."""
@@ -49,6 +53,87 @@ def summarize_history(history):
         "storm_hours": sum(1 for s in history["storm"] if s != "clear"),
         "alert_hours": sum(1 for a in history["alerts"] if a),
     }
+
+
+def aggregate_by_sol(history):
+    """Aggregates the history into one row per Martian sol (24 hours).
+
+    A partial trailing sol shows up as the final row with `hours < 24`.
+    Each row carries the per-sol averages plus a `regime` string listing
+    the climate states observed that day in severity order.
+    """
+    gen = history["total_generation_kw"]
+    con = history["total_consumption_kw"]
+    storms = history["storm"]
+    n = len(gen)
+
+    rows = []
+    for start in range(0, n, HOURS_PER_SOL):
+        end = min(start + HOURS_PER_SOL, n)
+        slice_gen = gen[start:end]
+        slice_con = con[start:end]
+        slice_storms = storms[start:end]
+        hours = end - start
+        avg_gen = sum(slice_gen) / hours
+        avg_con = sum(slice_con) / hours
+        unique_storms = sorted(set(slice_storms), key=STORM_SEVERITY.index)
+        rows.append({
+            "sol": start // HOURS_PER_SOL,
+            "hours": hours,
+            "avg_generation_kw": avg_gen,
+            "avg_consumption_kw": avg_con,
+            "avg_delta_kw": avg_gen - avg_con,
+            "regime": "/".join(unique_storms),
+        })
+    return rows
+
+
+def status_distribution(history):
+    """Counts how many hours fell into each balance status."""
+    counts = {STATUS_RISK: 0, STATUS_BALANCED: 0, STATUS_SURPLUS: 0}
+    for g, c in zip(history["total_generation_kw"], history["total_consumption_kw"]):
+        counts[analyze_balance(g, c)["status"]] += 1
+    return counts
+
+
+def generation_breakdown(history):
+    """Average power and percentage share per energy source."""
+    n = len(history["total_generation_kw"])
+    if n == 0:
+        empty = {"avg_kw": 0.0, "share": 0.0}
+        return {"solar": dict(empty), "wind": dict(empty), "nuclear": dict(empty)}
+
+    solar_avg = sum(history["solar_generation_kw"]) / n
+    wind_avg = sum(history["wind_generation_kw"]) / n
+    nuclear_avg = sum(history["nuclear_generation_kw"]) / n
+    total = solar_avg + wind_avg + nuclear_avg
+    share = (lambda v: v / total) if total > 0 else (lambda v: 0.0)
+    return {
+        "solar":   {"avg_kw": solar_avg,   "share": share(solar_avg)},
+        "wind":    {"avg_kw": wind_avg,    "share": share(wind_avg)},
+        "nuclear": {"avg_kw": nuclear_avg, "share": share(nuclear_avg)},
+    }
+
+
+def critical_moments(history):
+    """Finds the hour of biggest deficit and biggest surplus."""
+    n = len(history["total_generation_kw"])
+    if n == 0:
+        return {"worst_deficit": None, "biggest_surplus": None}
+
+    deltas = [g - c for g, c in zip(history["total_generation_kw"], history["total_consumption_kw"])]
+    worst = min(range(n), key=lambda i: deltas[i])
+    best = max(range(n), key=lambda i: deltas[i])
+
+    def snapshot(idx):
+        return {
+            "sol": idx // HOURS_PER_SOL,
+            "hour": idx % HOURS_PER_SOL,
+            "delta_kw": deltas[idx],
+            "storm": history["storm"][idx],
+        }
+
+    return {"worst_deficit": snapshot(worst), "biggest_surplus": snapshot(best)}
 
 
 def write_log(history, path):
