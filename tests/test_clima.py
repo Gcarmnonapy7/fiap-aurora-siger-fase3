@@ -47,5 +47,48 @@ class TestTemperatura(unittest.TestCase):
                 self.assertLess(t, 20)
 
 
+class TestTempestade(unittest.TestCase):
+
+    def setUp(self):
+        random.seed(42)
+
+    def test_inicia_em_limpo(self):
+        from colonia.clima import EstadoTempestade
+        e = EstadoTempestade()
+        self.assertEqual(e.estado, "limpo")
+        self.assertEqual(e.horas_restantes, 0)
+
+    def test_avancar_sem_tempestade_pode_ficar_limpo(self):
+        from colonia.clima import EstadoTempestade
+        e = EstadoTempestade()
+        for _ in range(100):
+            e.avancar(vento_max_24h=5.0, sol=0, hora=12)
+            self.assertIn(e.estado, ("limpo", "leve", "moderada", "grave"))
+
+    def test_forcar_evento_didatico_no_sol_3(self):
+        from colonia.clima import EstadoTempestade
+        e = EstadoTempestade()
+        e.avancar(vento_max_24h=5.0, sol=3, hora=8, forcar_evento=True)
+        self.assertEqual(e.estado, "moderada")
+        self.assertGreater(e.horas_restantes, 0)
+
+    def test_duracao_da_leve_decrementa(self):
+        from colonia.clima import EstadoTempestade
+        e = EstadoTempestade()
+        e.estado = "leve"
+        e.horas_restantes = 5
+        e.avancar(vento_max_24h=5.0, sol=0, hora=12)
+        self.assertEqual(e.horas_restantes, 4)
+
+    def test_termina_quando_horas_chegam_a_zero(self):
+        from colonia.clima import EstadoTempestade
+        e = EstadoTempestade()
+        e.estado = "leve"
+        e.horas_restantes = 1
+        e.avancar(vento_max_24h=5.0, sol=0, hora=12)
+        self.assertEqual(e.estado, "limpo")
+        self.assertEqual(e.horas_restantes, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
