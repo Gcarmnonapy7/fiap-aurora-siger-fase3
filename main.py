@@ -74,12 +74,12 @@ NO_SIM_MSG = "\n[!] Nenhuma simulação rodada ainda — escolha a opção 1 pri
 # ---------- comandos do menu ----------
 
 def cmd_run_simulation(session: SessionState) -> None:
-    print(f"\nRodando simulação (seed={session.seed_label()}, horizonte={session.horizon} passos)...")
+    print(f"\nRodando simulação (seed={session.seed_label()}, horizonte={session.horizon} horas)...")
     _, battery, history = run_simulation(seed=session.seed, horizon=session.horizon)
     session.battery = battery
     session.history = history
     summary = summarize_history(history)
-    print(f"[OK] {summary['total_steps']} passos simulados.")
+    print(f"[OK] {summary['total_steps']} horas simuladas.")
     print(f"     Geração média: {summary['avg_generation_kw']:.1f} kW")
     print(f"     Consumo médio: {summary['avg_consumption_kw']:.1f} kW")
     print(f"     Bateria final: {battery['current_charge_kwh']:.1f}/{battery['max_capacity_kwh']:.1f} kWh")
@@ -98,10 +98,10 @@ def cmd_configure_seed(session: SessionState) -> None:
 
 
 def cmd_configure_horizon(session: SessionState) -> None:
-    print(f"\nHorizonte atual: {session.horizon} passos ({session.horizon // 24} sóis + {session.horizon % 24}h)")
-    print(f"Padrão do enunciado: {TOTAL_STEPS} passos (7 sóis × 24h)")
+    print(f"\nHorizonte atual: {session.horizon} horas ({session.horizon // 24} sóis + {session.horizon % 24}h)")
+    print(f"Padrão do enunciado: {TOTAL_STEPS} horas (7 sóis × 24h)")
     session.horizon = prompt_int("Novo horizonte (em horas)", default=session.horizon)
-    print(f"[OK] horizonte = {session.horizon}")
+    print(f"[OK] horizonte = {session.horizon} horas")
 
 
 def cmd_show_hierarchies(session: SessionState) -> None:
@@ -119,14 +119,14 @@ def cmd_show_summary(session: SessionState) -> None:
         return
     s = summarize_history(history)
     print("\n--- Resumo numérico da simulação ---")
-    print(f"  passos simulados      : {s['total_steps']}")
+    print(f"  horas simuladas       : {s['total_steps']}")
     print(f"  geração média (kW)    : {s['avg_generation_kw']:.2f}")
     print(f"  geração mínima (kW)   : {s['min_generation_kw']:.2f}")
     print(f"  geração máxima (kW)   : {s['max_generation_kw']:.2f}")
     print(f"  consumo médio (kW)    : {s['avg_consumption_kw']:.2f}")
     print(f"  bateria final (kWh)   : {battery['current_charge_kwh']:.1f}")
-    print(f"  passos com tempestade : {s['storm_hours']}")
-    print(f"  passos com alerta     : {s['alert_hours']}")
+    print(f"  horas com tempestade  : {s['storm_hours']}")
+    print(f"  horas com alerta      : {s['alert_hours']}")
 
 
 def cmd_decision_rules(session: SessionState) -> None:
@@ -151,6 +151,14 @@ def cmd_decision_rules(session: SessionState) -> None:
         print("  -> (nenhum alerta — operação saudável)")
 
 
+WIND_PRESETS = [
+    ("1", "Vento fraco",          5),
+    ("2", "Vento típico",         8),
+    ("3", "Vento forte",         11),
+    ("4", "Vento de saturação",  15),
+]
+
+
 def cmd_wind_prediction(session: SessionState) -> None:
     history = session.history
     if history is None:
@@ -163,10 +171,22 @@ def cmd_wind_prediction(session: SessionState) -> None:
         print(f"  ! previsão indisponível: {e}")
         return
     sign = "+" if b >= 0 else "-"
-    print(f"  reta ajustada: y = {a:.3f}·v {sign} {abs(b):.3f}")
-    wind = prompt_int("  vento (m/s) para prever", default=11)
+    print(f"Reta ajustada: y = {a:.3f}·v {sign} {abs(b):.3f}\n")
+
+    print("Escolha o cenário de vento:")
+    for key, label, value in WIND_PRESETS:
+        print(f"  [{key}] {label:<20} (v = {value} m/s)")
+    print("  [5] Digitar valor customizado")
+
+    valid = {k for k, _, _ in WIND_PRESETS} | {"5"}
+    choice = prompt_choice("Escolha: ", valid)
+    if choice == "5":
+        wind = prompt_int("Vento (m/s)", default=11, minimum=0)
+    else:
+        wind = next(v for k, _, v in WIND_PRESETS if k == choice)
+
     forecast = max(0.0, predict(a, b, wind))
-    print(f"  -> para v = {wind} m/s, energia eólica prevista ≈ {forecast:.1f} kW")
+    print(f"  -> v = {wind} m/s -> energia eólica prevista = {forecast:.1f} kW")
 
 
 def cmd_balance_analysis(session: SessionState) -> None:
@@ -198,7 +218,7 @@ def cmd_save_log(session: SessionState) -> None:
     except OSError as e:
         print(f"  ! erro ao escrever {path}: {e}")
         return
-    print(f"[OK] log gravado em {path} ({len(history['total_generation_kw'])} passos).")
+    print(f"[OK] log gravado em {path} ({len(history['total_generation_kw'])} horas).")
 
 
 # ---------- loop principal ----------
@@ -218,7 +238,7 @@ MENU = [
 
 
 def print_menu(session: SessionState) -> None:
-    status = "(sem simulação ainda)" if not session.has_simulation() else f"({session.horizon} passos rodados)"
+    status = "(sem simulação ainda)" if not session.has_simulation() else f"({session.horizon} horas simuladas)"
     print()
     print("=" * 57)
     print(f"  Configuração: seed={session.seed_label()} | horizonte={session.horizon}")

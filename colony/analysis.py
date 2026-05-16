@@ -56,7 +56,7 @@ def write_log(history, path):
     n = len(history["total_generation_kw"])
     with open(path, "w", encoding="utf-8") as f:
         f.write("# Aurora Siger colony log\n")
-        f.write(f"# {n} steps recorded\n\n")
+        f.write(f"# {n} hours recorded\n\n")
         for k in range(n):
             balance = analyze_balance(
                 history["total_generation_kw"][k],

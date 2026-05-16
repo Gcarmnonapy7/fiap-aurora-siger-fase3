@@ -78,8 +78,8 @@ Escolha uma opção:
 ### Saída de exemplo (após rodar a simulação)
 
 ```
-Rodando simulação (seed=42, horizonte=168 passos)...
-[OK] 168 passos simulados.
+Rodando simulação (seed=42, horizonte=168 horas)...
+[OK] 168 horas simuladas.
      Geração média: 92.6 kW
      Consumo médio: 93.4 kW
      Bateria final: 103.6/500.0 kWh
@@ -161,7 +161,7 @@ python3 -m unittest discover -v
 
 A Fase 2 entregou um sistema **reativo**: 12 módulos sabiam pousar mas não sabiam operar. A Fase 3 adiciona:
 
-1. **Operação contínua sob clima estocástico** (168 passos com ruído gaussiano, FSM de tempestades, deposição de poeira).
+1. **Operação contínua sob clima estocástico** (168 horas com ruído gaussiano, FSM de tempestades, deposição de poeira).
 2. **Decisão automática** baseada em regras (`decision.py`) e política de load shedding (`allocation.py`).
 3. **Previsão** via regressão linear manual (`prediction.py`) — sistema agora **aprende** dos próprios dados.
 4. **Análise crítica** do balanço energético (`analysis.py`) — fechando o ciclo: dado → análise → ação.
