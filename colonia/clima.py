@@ -16,7 +16,29 @@ from colonia.constantes import (
     SOLS_POR_ANO_MARCIANO,
     PROB_BASE_POR_SOL, DURACAO_HORAS, LIMIAR_VENTO_BONUS, FATOR_PERIHELIO,
     SOL_EVENTO_DIDATICO, HORA_EVENTO_DIDATICO,
+    TAU_BASE, TAU_VENTO_FATOR, TAU_VENTO_LIMIAR,
+    PERDA_PAINEIS_POR_SOL, LIMPEZA_RECUPERACAO, PISO_FATOR_PAINEIS,
 )
+
+
+def calcular_tau(tempestade, vento):
+    """Opacidade atmosférica = base por classe + bônus por vento."""
+    extra = TAU_VENTO_FATOR * max(0.0, vento - TAU_VENTO_LIMIAR)
+    return TAU_BASE[tempestade] + extra
+
+
+def transmissao_solar(tau):
+    """Lei de Beer-Lambert: transmissão = exp(-tau) (zenith simplificado)."""
+    return math.exp(-tau)
+
+
+def atualizar_fator_paineis(fator_atual, sorteio_limpeza):
+    """Aplica deposição contínua e (se sorteio=True) recuperação por dust devil."""
+    novo = max(PISO_FATOR_PAINEIS, fator_atual - PERDA_PAINEIS_POR_SOL)
+    if sorteio_limpeza:
+        recuperacao = random.uniform(*LIMPEZA_RECUPERACAO)
+        novo = min(1.0, novo + recuperacao)
+    return novo
 
 
 def amostrar_vento(hora):

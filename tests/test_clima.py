@@ -90,5 +90,55 @@ class TestTempestade(unittest.TestCase):
         self.assertEqual(e.horas_restantes, 0)
 
 
+class TestTauEPaineis(unittest.TestCase):
+
+    def test_tau_limpo_baixo(self):
+        from colonia.clima import calcular_tau, transmissao_solar
+        self.assertAlmostEqual(calcular_tau("limpo", vento=2.0), 0.5)
+
+    def test_tau_grave_alto(self):
+        from colonia.clima import calcular_tau
+        self.assertAlmostEqual(calcular_tau("grave", vento=2.0), 8.0)
+
+    def test_tau_aumenta_com_vento(self):
+        from colonia.clima import calcular_tau
+        baixo = calcular_tau("limpo", vento=5.0)
+        alto  = calcular_tau("limpo", vento=15.0)
+        self.assertGreater(alto, baixo)
+
+    def test_transmissao_solar_em_limpo_aproxima_60_porcento(self):
+        from colonia.clima import transmissao_solar
+        # exp(-0.5) ≈ 0.606
+        self.assertAlmostEqual(transmissao_solar(0.5), 0.6065, places=3)
+
+    def test_transmissao_grave_quase_zero(self):
+        from colonia.clima import transmissao_solar
+        # exp(-8) ≈ 0.000335
+        self.assertLess(transmissao_solar(8.0), 0.001)
+
+
+class TestFatorPaineis(unittest.TestCase):
+
+    def setUp(self):
+        random.seed(42)
+
+    def test_deposicao_reduz_fator(self):
+        from colonia.clima import atualizar_fator_paineis
+        novo = atualizar_fator_paineis(fator_atual=1.0, sorteio_limpeza=False)
+        self.assertLess(novo, 1.0)
+        self.assertAlmostEqual(novo, 1.0 - 0.002, places=4)
+
+    def test_limpeza_recupera_fator(self):
+        from colonia.clima import atualizar_fator_paineis
+        novo = atualizar_fator_paineis(fator_atual=0.5, sorteio_limpeza=True)
+        self.assertGreater(novo, 0.5)
+
+    def test_fator_nao_baixa_do_piso(self):
+        from colonia.clima import atualizar_fator_paineis
+        from colonia.constantes import PISO_FATOR_PAINEIS
+        novo = atualizar_fator_paineis(fator_atual=PISO_FATOR_PAINEIS, sorteio_limpeza=False)
+        self.assertGreaterEqual(novo, PISO_FATOR_PAINEIS)
+
+
 if __name__ == "__main__":
     unittest.main()
