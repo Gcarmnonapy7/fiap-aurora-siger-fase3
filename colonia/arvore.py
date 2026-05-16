@@ -22,3 +22,19 @@ class No:
 
     def eh_folha(self):
         return len(self.filhos) == 0
+
+    def percorrer_dfs(self):
+        """Percurso em profundidade (pré-ordem). Generator."""
+        yield self
+        for filho in self.filhos:
+            yield from filho.percorrer_dfs()
+
+    def percorrer_bfs(self):
+        """Percurso em largura (por nível). Generator."""
+        from collections import deque
+        fila = deque([self])
+        while fila:
+            atual = fila.popleft()
+            yield atual
+            for filho in atual.filhos:
+                fila.append(filho)
