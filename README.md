@@ -1,18 +1,19 @@
-# Aurora Siger — Fase 3: Organização, decisão e análise de dados
+# Aurora Siger — Fase 3: Sistema Inteligente Integrado (AURORA CORE)
 
-Simulador em Python da colônia marciana **Aurora Siger** após o pouso bem-sucedido dos 12 módulos da Fase 2. Os módulos agora **operam** sob clima estocástico realista (7 sóis marcianos), produzindo séries temporais de geração, consumo e estado de bateria que servirão de base para os itens de previsão (regressão linear) e decisão automática da entrega final.
+Simulador em Python da colônia marciana **Aurora Siger** após o pouso bem-sucedido dos 12 módulos da Fase 2. Os módulos agora **operam** sob clima estocástico realista (7 sóis marcianos), produzindo séries temporais de geração, consumo e estado de bateria. Sobre essas séries, o sistema **AURORA CORE** aplica três camadas analíticas: regras de decisão automáticas, previsão de geração eólica via regressão linear e análise de balanço energético.
 
 Atividade Integradora da Fase 3 — Ciência da Computação, FIAP (2026).
 
-## Entregáveis
+## Objetivo
 
-| Arquivo | Descrição |
-|---------|-----------|
-| `main.py` | Entry point do simulador (imprime árvores e resumo de 168 passos) |
-| `colonia/` | Pacote Python — 9 módulos organizados em 5 camadas (dados → clima → geração → política → histórico) |
-| `tests/` | Suíte de 68 testes unitários e de integração (`unittest`) |
-| `docs/superpowers/specs/` | Documento de design com decisões arquiteturais e referências científicas |
-| `docs/superpowers/plans/` | Plano de implementação em 15 tasks (TDD) |
+Cobrir os 4 itens do enunciado oficial em um único sistema funcional:
+
+| Item | Descrição | Implementação |
+|------|-----------|---------------|
+| **1.1** | Organização hierárquica dos dados | `colony/modules.py` + `colony/hierarchies.py` (duas árvores N-árias) |
+| **1.2** | Regras de decisão automáticas | `colony/decision.py` (`evaluate_rules`) |
+| **1.3** | Regressão linear (vento → energia) | `colony/prediction.py` (sem numpy/sklearn) |
+| **1.4** | Análise consumo × geração | `colony/analysis.py` (`analyze_balance`) |
 
 ## Estrutura do repositório
 
@@ -21,44 +22,115 @@ Atividade Integradora da Fase 3 — Ciência da Computação, FIAP (2026).
 ├── README.md
 ├── LICENSE
 ├── enunciado.md                   # enunciado original da atividade
-├── main.py                        # entry point CLI do simulador
-├── colonia/
+├── main.py                        # entry point CLI (com argparse)
+├── colony/                        # pacote em inglês (código)
 │   ├── __init__.py
-│   ├── constantes.py              # parâmetros físicos (clima, painéis, bateria, térmico)
-│   ├── modulos.py                 # lista plana dos 13 módulos
-│   ├── arvore.py                  # classe No N-ária genérica (DFS, BFS, busca, agregação)
-│   ├── hierarquias.py             # duas árvores: funcional e criticidade
-│   ├── clima.py                   # vento, temperatura, tempestades (FSM), tau, painéis
-│   ├── geracao.py                 # geração solar, eólica e nuclear
-│   ├── consumo.py                 # consumo base + termo térmico Q=U·A·ΔT
-│   ├── alocacao.py                # política de load shedding em 4 etapas
-│   ├── estado.py                  # bateria, clima atual, histórico
-│   └── simulador.py               # orquestrador (passo + horizonte de 168 passos)
-├── tests/                         # testes unitários espelhando os módulos de colonia/
+│   ├── constants.py               # parâmetros físicos (clima, painéis, bateria, térmico)
+│   ├── modules.py                 # lista plana dos 13 módulos (MODULES)
+│   ├── tree.py                    # classe Node (árvore N-ária genérica)
+│   ├── hierarchies.py             # build_functional_tree, build_criticality_tree
+│   ├── climate.py                 # vento, temperatura, tempestades (FSM), tau, painéis
+│   ├── generation.py              # generate_solar / generate_wind / generate_nuclear
+│   ├── consumption.py             # consumo base + termo térmico Q = U·A·ΔT
+│   ├── allocation.py              # política de load shedding em 4 etapas
+│   ├── state.py                   # bateria, clima atual, histórico
+│   ├── simulator.py               # orquestrador (run_simulation, step)
+│   ├── decision.py                # NOVO — regras de decisão (item 1.2)
+│   ├── prediction.py              # NOVO — regressão linear manual (item 1.3)
+│   └── analysis.py                # NOVO — balanço energético + log (item 1.4)
+├── tests/                         # 119 testes unitários e de integração
 └── docs/superpowers/
-    ├── specs/                     # design e justificativas
-    └── plans/                     # plano de implementação seguido (TDD)
+    ├── specs/                     # design e justificativas físicas
+    └── plans/                     # planos TDD executados
 ```
 
 ## Como executar o simulador
 
 ```bash
+# Execução padrão (determinística, 168 passos = 7 sóis × 24h)
 python3 main.py
+
+# Modo não-determinístico (usa entropia do sistema; resultados variam a cada run)
+python3 main.py --random
+
+# Horizonte curto (por exemplo 48 passos = 2 sóis)
+python3 main.py --horizon 48
+
+# Seed customizada (para reproduzir um cenário específico)
+python3 main.py --seed 7
+
+# Gravar histórico passo-a-passo em arquivo de texto
+python3 main.py --log-file data/colony_log.txt
+
+# Saída enxuta (sem árvores)
+python3 main.py --quiet
 ```
 
-Sem dependências externas — usa apenas `math`, `random` e `collections.deque` da biblioteca padrão.
+**Dependências:** nenhuma externa — usa apenas `math`, `random`, `collections.deque` e `argparse` da biblioteca padrão.
 
-O programa imprime as duas hierarquias (funcional e criticidade), roda 7 sóis marcianos (168 horas) e mostra um resumo numérico do histórico.
+### Saída de exemplo (`seed=42`, padrão)
 
-**Saída de exemplo** (`seed=42`):
+O programa imprime as duas hierarquias, roda 7 sóis marcianos e mostra:
 
 ```
 Passos simulados: 168
 Geração total média: 92.6 kW
-Consumo total médio: 94.1 kW
-Bateria final: 0.0 / 500.0 kWh
+Consumo total médio: 93.4 kW
+Bateria final: 103.6 / 500.0 kWh
 Passos com tempestade: 142 de 168
-Passos com alerta: 98
+Passos com alerta: 0
+
+Balanço médio do período:
+  status: risk
+  delta médio: -0.9 kW
+  mensagem: ALERTA: consumo maior que geração
+
+Regras de decisão (último passo):
+  entrada: energia=83.7 kW, consumo=80.5 kW, tempestade=light
+  → (nenhum alerta — operação saudável)
+
+Previsão eólica (regressão linear sobre o histórico):
+  reta ajustada: y = 2.500·v - 7.500
+  para v = 11.0 m/s → previsão ≈ 20.0 kW
+```
+
+> A reta ajustada `y = 2.5·v - 7.5` recupera quase exatamente o modelo físico interno da geração eólica. Isso é proposital — demonstra que a regressão linear manual funciona corretamente sobre os dados reais do simulador.
+
+## Exemplos do enunciado (entrada → saída)
+
+### Item 1.2 — Regras de decisão
+
+```python
+from colony.decision import evaluate_rules
+
+evaluate_rules({"energy_kw": 40, "consumption_kw": 70, "storm": "clear"})
+# → ['ALERTA: reduzir consumo', 'EMERGÊNCIA ENERGÉTICA']
+
+evaluate_rules({"energy_kw": 40, "consumption_kw": 80, "storm": "clear"})
+# → ['ALERTA: reduzir consumo', 'ATIVAR MODO ECONOMIA', 'EMERGÊNCIA ENERGÉTICA']
+```
+
+### Item 1.3 — Regressão linear
+
+```python
+from colony.prediction import linear_regression, predict
+
+a, b = linear_regression([8, 10, 12], [20, 25, 30])
+# a = 2.5, b = 0
+predict(a, b, 11)
+# → 27.5
+```
+
+### Item 1.4 — Análise de balanço
+
+```python
+from colony.analysis import analyze_balance
+
+analyze_balance(generation_kw=40, consumption_kw=70)
+# → {'status': 'risk', 'message': 'ALERTA: consumo maior que geração', 'delta_kw': -30}
+
+analyze_balance(generation_kw=80, consumption_kw=30)
+# → {'status': 'surplus', 'message': 'SUGESTÃO: armazenar energia excedente', 'delta_kw': 50}
 ```
 
 ## Como rodar os testes
@@ -67,7 +139,7 @@ Passos com alerta: 98
 python3 -m unittest discover -v
 ```
 
-Os testes são determinísticos via `random.seed(42)` e validam:
+**119 testes** determinísticos via `random.seed(42)`, todos passam em <100ms. Validam:
 
 - Estrutura da árvore N-ária e percursos (DFS pré-ordem, BFS por nível).
 - Construção das duas hierarquias e compartilhamento de referências entre elas.
@@ -76,6 +148,25 @@ Os testes são determinísticos via `random.seed(42)` e validam:
 - Consumo com termo térmico em diferentes temperaturas externas.
 - Política de alocação em 4 etapas (load shedding).
 - Integração ponta-a-ponta do simulador (histórico íntegro, bateria dentro dos limites, evento didático registrado).
+- **Determinismo** vs. **não-determinismo** (`seed=42` reprodutível; `seed=None` varia entre runs).
+- Regras de decisão, regressão linear manual e análise de balanço.
+
+## Convenções
+
+- **Código**: identificadores em **inglês** (`colony/`, `Node`, `evaluate_rules`, `"adequate"`, `"Vital"`).
+- **Documentação** (este README, CLAUDE.md, relatório PDF, specs): **português BR**.
+- **Mensagens de alerta** voltadas ao usuário (saída do programa, valores literais retornados por `evaluate_rules`): **português**, pois o enunciado pede esses textos exatos.
+
+## Evolução: reativo → preditivo
+
+A Fase 2 entregou um sistema **reativo**: 12 módulos sabiam pousar mas não sabiam operar. A Fase 3 adiciona:
+
+1. **Operação contínua sob clima estocástico** (168 passos com ruído gaussiano, FSM de tempestades, deposição de poeira).
+2. **Decisão automática** baseada em regras (`decision.py`) e política de load shedding (`allocation.py`).
+3. **Previsão** via regressão linear manual (`prediction.py`) — sistema agora **aprende** dos próprios dados.
+4. **Análise crítica** do balanço energético (`analysis.py`) — fechando o ciclo: dado → análise → ação.
+
+O sistema final cumpre o objetivo declarado no enunciado: evoluir de **reativo** para **preditivo**.
 
 ## Equipe
 
