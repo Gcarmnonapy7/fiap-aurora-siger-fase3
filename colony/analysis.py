@@ -8,9 +8,12 @@ Three responsibilities:
    prescribes.
 2. `summarize_history(history)`: aggregate statistics over the entire
    simulation run (averages, extremes, alert counts).
-3. `write_log(history, path)`: serializes the step-by-step history to a
-   plaintext file (the artifact requested by the AURORA CORE proposal).
+3. `write_log(history, path, seed)`: appends the step-by-step history
+   to a plaintext file with a header identifying the run.
 """
+
+import os
+from datetime import datetime
 
 SURPLUS_MARGIN = 1.10  # generation must exceed consumption by 10% to be "surplus"
 
@@ -136,19 +139,32 @@ def critical_moments(history):
     return {"worst_deficit": snapshot(worst), "biggest_surplus": snapshot(best)}
 
 
-def write_log(history, path):
-    """Writes the per-step history to `path` as readable plaintext."""
+def write_log(history, path, seed=None):
+    """Appends the per-step history to `path` as readable plaintext.
+
+    Each call adds a self-contained block prefixed by a header that
+    identifies the simulation (seed, horizon, timestamp). Existing
+    content is preserved — the file grows on every call.
+
+    The parent directory is created on demand, so the first run on a
+    fresh checkout does not fail with FileNotFoundError.
+    """
     n = len(history["total_generation_kw"])
-    with open(path, "w", encoding="utf-8") as f:
-        f.write("# Aurora Siger colony log\n")
-        f.write(f"# {n} hours recorded\n\n")
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    seed_label = "random" if seed is None else str(seed)
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(f"=== Aurora Siger | seed={seed_label} | {n} hours | {timestamp} ===\n")
         for k in range(n):
             balance = analyze_balance(
                 history["total_generation_kw"][k],
                 history["total_consumption_kw"][k],
             )
-            sol = k // 24
-            hour = k % 24
+            sol = k // HOURS_PER_SOL
+            hour = k % HOURS_PER_SOL
             f.write(
                 f"step={k} sol={sol} hour={hour:02d} "
                 f"storm={history['storm'][k]} "
@@ -157,3 +173,4 @@ def write_log(history, path):
                 f"bat={history['battery_charge_kwh'][k]:.0f}kWh "
                 f"status={balance['status']}\n"
             )
+        f.write("\n")

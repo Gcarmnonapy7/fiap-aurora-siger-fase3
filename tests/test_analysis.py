@@ -68,13 +68,51 @@ class TestWriteLog(unittest.TestCase):
         _, _, history = run_simulation(seed=42, horizon=5)
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "colony_log.txt")
-            write_log(history, path)
+            write_log(history, path, seed=42)
             self.assertTrue(os.path.exists(path))
             with open(path) as f:
                 content = f.read()
             self.assertIn("sol", content.lower())
             for line_number in range(5):
                 self.assertIn(f"step={line_number}", content)
+
+    def test_header_contains_seed_and_hour_count(self):
+        _, _, history = run_simulation(seed=42, horizon=3)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "log.txt")
+            write_log(history, path, seed=42)
+            content = open(path).read()
+            self.assertIn("seed=42", content)
+            self.assertIn("3 hours", content)
+            self.assertIn("Aurora Siger", content)
+
+    def test_random_seed_renders_as_random(self):
+        _, _, history = run_simulation(seed=1, horizon=2)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "log.txt")
+            write_log(history, path, seed=None)
+            self.assertIn("seed=random", open(path).read())
+
+    def test_subsequent_calls_append_instead_of_overwrite(self):
+        _, _, history_a = run_simulation(seed=1, horizon=2)
+        _, _, history_b = run_simulation(seed=2, horizon=2)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "log.txt")
+            write_log(history_a, path, seed=1)
+            write_log(history_b, path, seed=2)
+            content = open(path).read()
+            self.assertIn("seed=1", content)
+            self.assertIn("seed=2", content)
+            # Two header lines (===) → two blocks preserved.
+            self.assertEqual(content.count("=== Aurora Siger"), 2)
+
+    def test_creates_parent_directory_when_missing(self):
+        _, _, history = run_simulation(seed=42, horizon=2)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "fresh_dir", "log.txt")
+            self.assertFalse(os.path.isdir(os.path.dirname(path)))
+            write_log(history, path, seed=42)
+            self.assertTrue(os.path.exists(path))
 
 
 class TestAggregateBySol(unittest.TestCase):

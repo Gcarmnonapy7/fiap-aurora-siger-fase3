@@ -245,20 +245,23 @@ def cmd_balance_analysis(session: SessionState) -> None:
               f"{bs['delta_kw']:+.1f} kW (storm={bs['storm']})")
 
 
+LOG_PATH = "data/colony_log.txt"
+
+
 def cmd_save_log(session: SessionState) -> None:
     history = session.history
     if history is None:
         print(NO_SIM_MSG)
         return
-    default_path = "data/colony_log.txt"
-    raw = input(f"\nCaminho do arquivo de log [{default_path}]: ").strip()
-    path = raw or default_path
     try:
-        write_log(history, path)
+        write_log(history, LOG_PATH, seed=session.seed)
     except OSError as e:
-        print(f"  ! erro ao escrever {path}: {e}")
+        print(f"\n[!] Erro ao gravar {LOG_PATH}: {e}")
         return
-    print(f"[OK] log gravado em {path} ({len(history['total_generation_kw'])} horas).")
+    hours = len(history["total_generation_kw"])
+    print(f"\n[OK] Entrada anexada em {LOG_PATH}")
+    print(f"     {hours} horas registradas (seed={session.seed_label()}).")
+    print(f"     O arquivo preserva execuções anteriores em modo aditivo.")
 
 
 # ---------- loop principal ----------
