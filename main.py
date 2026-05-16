@@ -23,7 +23,7 @@ def main(seed=42):
     print(construir_arvore_criticidade().imprimir())
     print()
 
-    clima_final, bateria_final, historico = rodar_simulacao()
+    _, bateria_final, historico = rodar_simulacao()
 
     print(f"Passos simulados: {len(historico['vento_ms'])}")
     print(f"Geração total média: {sum(historico['geracao_total_kw'])/len(historico['geracao_total_kw']):.1f} kW")
