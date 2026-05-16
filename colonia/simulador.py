@@ -1,6 +1,7 @@
 """Orquestrador do simulador: 1 passo + horizonte completo de 168 passos."""
 
 import random
+from collections import deque
 
 from colonia.alocacao import alocar_energia
 from colonia.clima import (
@@ -45,8 +46,6 @@ def passo(clima, bateria, historico, arvores, tempestade_state, ultimo_vento_24h
     vento = amostrar_vento(hora)
     temperatura = amostrar_temperatura(sol, hora)
     ultimo_vento_24h.append(vento)
-    if len(ultimo_vento_24h) > 24:
-        ultimo_vento_24h.pop(0)
     vento_max_24h = max(ultimo_vento_24h)
 
     tempestade_state.avancar(vento_max_24h, sol, hora, forcar_evento=FORCAR_EVENTO_DIDATICO)
@@ -114,7 +113,7 @@ def rodar_simulacao():
     clima, bateria, historico = estado_inicial()
     arvores = (construir_arvore_funcional(), construir_arvore_criticidade())
     tempestade_state = EstadoTempestade()
-    ultimo_vento_24h = []
+    ultimo_vento_24h = deque(maxlen=24)
 
     for _ in range(TOTAL_PASSOS):
         passo(clima, bateria, historico, arvores, tempestade_state, ultimo_vento_24h)

@@ -71,8 +71,7 @@ class EstadoTempestade:
         prob = PROB_BASE_POR_SOL[classe]
         bonus_vento = max(0.0, (vento_max_24h - LIMIAR_VENTO_BONUS) / 10.0)
         # perihélio: aproximação simples — sols 0–6 são "perihélio" por construção
-        bonus_periode = FATOR_PERIHELIO
-        return prob * (1 + bonus_vento) * bonus_periode
+        return prob * (1 + bonus_vento) * FATOR_PERIHELIO
 
     def avancar(self, vento_max_24h, sol, hora, forcar_evento=False):
         """Avança um passo (1 hora) na máquina de estados."""

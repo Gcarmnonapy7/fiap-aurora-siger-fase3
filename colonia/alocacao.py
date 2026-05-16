@@ -24,26 +24,36 @@ def _consumo_no_modo(modulo, modo, clima):
     return base + extra
 
 
-def _folhas_consumidoras_por_nivel(arvore):
-    """Devolve dict {nome_nivel: [modulos_consumidores]} para Vital, Sustento, Expansão."""
+def _folhas_por_nivel(arvore):
+    """Devolve (consumidores_por_nivel, geradores)."""
     niveis = {}
+    geradores = []
     for filho_nivel in arvore.filhos:
-        modulos = [m for m in filho_nivel.folhas() if m["tipo"] not in GERADORES]
+        consumidores = []
+        for m in filho_nivel.folhas():
+            (geradores if m["tipo"] in GERADORES else consumidores).append(m)
         # ordena por id (menor = mais prioritário) para tie-breaker consistente
-        modulos.sort(key=lambda m: m["id"])
-        niveis[filho_nivel.nome] = modulos
-    return niveis
+        consumidores.sort(key=lambda m: m["id"])
+        niveis[filho_nivel.nome] = consumidores
+    return niveis, geradores
 
 
 def alocar_energia(arvore_criticidade, oferta_kw, clima):
-    """Aplica política de 4 etapas. Mutaciona modulo['modo_atual'] in-place."""
-    niveis = _folhas_consumidoras_por_nivel(arvore_criticidade)
+    """Aplica política de 4 etapas. Mutaciona modulo['modo_atual'] in-place.
+
+    Geradores não são rebaixados pela política (modo fixo 'adequado'), mas seu
+    consumo próprio ENTRA no cálculo de custo — caso contrário a política
+    sub-estimaria a demanda e violaria a oferta silenciosamente.
+    """
+    niveis, geradores = _folhas_por_nivel(arvore_criticidade)
     todos = niveis["Vital"] + niveis["Sustento"] + niveis["Expansão"]
 
     # Etapa 1: tudo em adequado
     for m in todos:
         m["modo_atual"] = "adequado"
-    custo = sum(_consumo_no_modo(m, "adequado", clima) for m in todos)
+    custo_consumidores = sum(_consumo_no_modo(m, "adequado", clima) for m in todos)
+    custo_geradores_fixo = sum(_consumo_no_modo(m, "adequado", clima) for m in geradores)
+    custo = custo_consumidores + custo_geradores_fixo
 
     if custo <= oferta_kw:
         # distribui excedente para escalonáveis (ordem por id menor primeiro)
@@ -78,5 +88,5 @@ def alocar_energia(arvore_criticidade, oferta_kw, clima):
             depois = _consumo_no_modo(m, "desligado", clima)
             custo -= (antes - depois)
 
-    # Etapa 4: emergência — sinaliza via retorno (caller pode disparar alerta)
-    # Vital permanece em 'minimo' independentemente do saldo.
+    # Etapa 4: emergência — Vital permanece em 'minimo' mesmo com saldo negativo.
+    # O alerta é emitido pelo simulador comparando consumo_total vs oferta após esta chamada.

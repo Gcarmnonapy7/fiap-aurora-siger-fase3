@@ -18,8 +18,6 @@ FATOR_SAZONAL = 1.2  # perihélio
 V_RUIDO_SIGMA = 1.5
 
 # --- Tempestades de poeira ---
-ESTADOS_TEMPESTADE = ("limpo", "leve", "moderada", "grave")
-
 PROB_BASE_POR_SOL = {
     "leve":     0.40,
     "moderada": 0.04,
