@@ -68,22 +68,23 @@ class EventManager(GenericManager):
         if self._active_event:
             self._active_event.do()
             if self._active_event.expired:
-                self._active_event.revert(storage)
                 self._event_log.append(f"Encerrado: {self._active_event.name}")
-                self._active_event = None
+                expired_evt = self._active_event
+                self._active_event = None      # limpa referência antes de reverter storage
+                expired_evt.revert(storage)
         else:
             # Rola para novo evento climático
             roll = random.random()
             if roll < 0.03:
                 evt = ColdFront()
-                evt.apply(storage)
-                self._active_event = evt
+                self._active_event = evt       # atribui antes de storage para dashboard consistente
                 self._event_log.append(f"NOVO: {evt.name} ({evt.duration_ticks} ticks)")
+                evt.apply(storage)
             elif roll < 0.05:
                 evt = Sandstorm()
-                evt.apply(storage)
                 self._active_event = evt
                 self._event_log.append(f"NOVO: {evt.name} ({evt.duration_ticks} ticks)")
+                evt.apply(storage)
 
         # Garante que event.active esteja correto quando não há evento
         if not self._active_event:

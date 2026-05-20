@@ -3,9 +3,9 @@ from colonia_aurora.energy.regression import LinearRegression
 
 SOLAR_EFFICIENCY = 0.22
 BATTERY_MAX      = 1000.0
-WIND_CUT_IN      = 3.0
-WIND_FURL        = 25.0
-WIND_CUTOUT      = 35.0
+WIND_CUT_IN      = 5.0
+WIND_FURL        = 50.0
+WIND_CUTOUT      = 100.0
 HISTORY_WINDOW   = 48
 SLOPE_CRITICAL   = -2.0
 SLOPE_LOW        = -0.5

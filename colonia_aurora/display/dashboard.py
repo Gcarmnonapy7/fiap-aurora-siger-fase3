@@ -296,8 +296,8 @@ def screen_modulos(storage: DataStorage, W: int, H: int, hist: dict, module_mana
     lvl_map = {"CRITICAL": 1, "LOW": 2, "NOMINAL": 3, "HIGH": 4, "SURPLUS": 5}
     cur_lvl = lvl_map.get(level, 3)
 
-    mods = module_manager.all_modules() if module_manager else []
-    active_count = sum(1 for m in mods if m.active and not m.broken)
+    mods = storage.get("modules.snapshot", [])
+    active_count = sum(1 for m in mods if m["active"] and not m["broken"])
     lines.append(f"  {AMBER}Módulos — {active_count} ativos / {len(mods)} total{RESET}")
     lines.append(DIM_C + HLINE * W + RESET)
     lines.append(
@@ -307,22 +307,23 @@ def screen_modulos(storage: DataStorage, W: int, H: int, hist: dict, module_mana
     lines.append(DIM_C + HLINE * W + RESET)
 
     for m in mods:
-        if m.broken:
+        if m["broken"]:
             sc, dot, st = RED, "✕", "quebrado"
-        elif not m.active:
+        elif not m["active"]:
             sc, dot, st = DIM_C, "○", "offline "
         else:
             sc, dot, st = GREEN, "●", "online  "
 
-        stars = AMBER + "★" * m.criticality + DIM_C + "☆" * (5 - m.criticality) + RESET
-        at_risk = (m.criticality < 4 and cur_lvl <= 2) or (m.criticality < 3 and cur_lvl <= 3)
+        crit = m["criticality"]
+        stars = AMBER + "★" * crit + DIM_C + "☆" * (5 - crit) + RESET
+        at_risk = (crit < 4 and cur_lvl <= 2) or (crit < 3 and cur_lvl <= 3)
         risk = RED + "⚠" + RESET if at_risk else GREEN + "✓" + RESET
 
         lines.append(
-            f"  {AMBER}{m.priority:<4}{RESET}{sc}{dot} {m.name:<11}{RESET}"
-            f"{GRAY}{m.type:<14}{RESET}"
+            f"  {AMBER}{m['priority']:<4}{RESET}{sc}{dot} {m['name']:<11}{RESET}"
+            f"{GRAY}{m['type']:<14}{RESET}"
             f"{stars}  "
-            f"{sc}{m.consumption_kw:<9.1f}{RESET}"
+            f"{sc}{m['consumption_kw']:<9.1f}{RESET}"
             f"{sc}{st:<12}{RESET}"
             f"{risk}"
         )
@@ -330,7 +331,7 @@ def screen_modulos(storage: DataStorage, W: int, H: int, hist: dict, module_mana
             break
 
     lines.append(DIM_C + HLINE * W + RESET)
-    total_active = sum(m.consumption_kw for m in mods if m.active and not m.broken)
+    total_active = sum(m["consumption_kw"] for m in mods if m["active"] and not m["broken"])
     gen = storage.get("energy.generated", 0.0)
     lines.append(
         f"  {GRAY}Consumo ativo:{RED}{total_active:7.1f} kW{RESET}  "
@@ -366,9 +367,9 @@ def screen_sensores(storage: DataStorage, W: int, H: int, hist: dict) -> list:
     phase_bar = AMBER + "▓" * int(phase * 20) + DIM_C + "░" * (20 - int(phase * 20)) + RESET
 
     sensors = [
-        ("🌡 Temperatura",    f"{temp:+.1f} °C",   WHITE,  hbar(max(0, temp + 70), 90, 25, BLUE)),
-        ("💨 Vel. Vento",     f"{wind:.1f} m/s",   TEAL,   hbar(wind, 50, 25, TEAL)),
-        ("☀ Irradiância",    f"{irrad:.0f} W/m²", AMBER,  hbar(irrad, 600, 25, AMBER)),
+        ("🌡 Temperatura",    f"{temp:+.1f} °C",   WHITE,  hbar(max(0, temp + 140), 170, 25, BLUE)),
+        ("💨 Vel. Vento",     f"{wind:.1f} m/s",   TEAL,   hbar(wind, 100, 25, TEAL)),
+        ("☀ Irradiância",    f"{irrad:.0f} W/m²", AMBER,  hbar(irrad, 590, 25, AMBER)),
         ("🌫 Poeira",         f"{dust:.2f}",        GRAY,   hbar(dust, 1, 25, RED)),
         (f"{day_icon}",      f"Fase: {phase:.2f}", AMBER,  phase_bar),
     ]
@@ -378,10 +379,10 @@ def screen_sensores(storage: DataStorage, W: int, H: int, hist: dict) -> list:
         )
 
     lines.append(DIM_C + HLINE * W + RESET)
-    if wind > 35:
-        lines.append(f"  {RED}{BOLD}⚠ TURBINA PARADA — vento acima de 35 m/s{RESET}")
-    elif wind > 25:
-        lines.append(f"  {ORANGE}▲ EMBANDEIRAMENTO parcial — vento {wind:.1f} m/s (25–35){RESET}")
+    if wind >= 100:
+        lines.append(f"  {RED}{BOLD}⚠ TURBINA PARADA — vento acima de 100 m/s{RESET}")
+    elif wind >= 50:
+        lines.append(f"  {ORANGE}▲ EMBANDEIRAMENTO parcial — vento {wind:.1f} m/s (50–100){RESET}")
     else:
         lines.append(f"  {GREEN}✓ Vento em faixa operacional ({wind:.1f} m/s){RESET}")
     return lines
@@ -392,12 +393,16 @@ def screen_eventos(storage: DataStorage, W: int, H: int, hist: dict, event_manag
     lines.append(f"  {AMBER}Evento Climático Ativo{RESET}")
     lines.append(DIM_C + HLINE * W + RESET)
 
-    if event_manager and event_manager.active_event:
-        evt = event_manager.active_event
-        lines.append(f"  {RED}{BOLD}  {evt.name}{RESET}")
-        lines.append(f"  {GRAY}  Ticks restantes: {ORANGE}{evt.duration_ticks}{RESET}")
-        prog = hbar(evt.duration_ticks, 72, W - 20, RED)
-        lines.append(f"  {prog}")
+    event_type = storage.get("event.active")
+    event_name = storage.get("event.name", event_type or "")
+    ticks_left = storage.get("event.duration_ticks", 0)
+
+    if event_type:
+        lines.append(f"  {RED}{BOLD}  {event_name or event_type}{RESET}")
+        if ticks_left > 0:
+            lines.append(f"  {GRAY}  Ticks restantes: {ORANGE}{ticks_left}{RESET}")
+            prog = hbar(ticks_left, 72, W - 20, RED)
+            lines.append(f"  {prog}")
     else:
         lines.append(f"  {GREEN}  ✓ Nenhum evento ativo — condições nominais{RESET}")
 
@@ -405,10 +410,12 @@ def screen_eventos(storage: DataStorage, W: int, H: int, hist: dict, event_manag
     lines.append(f"  {AMBER}Log de Eventos{RESET}")
     lines.append(DIM_C + HLINE * W + RESET)
 
-    log = event_manager.log if event_manager else []
+    log = storage.get("event.log", [])
     visible = log[-(H - len(lines) - 2):]
     for entry in reversed(visible):
-        c = RED if "NOVO" in entry or "FALHA" in entry else (GREEN if "Encerrado" in entry or "Reparado" in entry else GRAY)
+        c = RED if "NOVO" in entry or "FALHA" in entry else (
+            GREEN if "Encerrado" in entry or "Reparado" in entry else GRAY
+        )
         lines.append(f"  {c}{entry[:W - 4]}{RESET}")
     return lines
 
@@ -473,7 +480,7 @@ def render(storage: DataStorage, tab_idx: int, paused: bool,
     lc    = LEVEL_CLR.get(level, WHITE)
     tick  = storage.get("tick", 0)
     sol   = storage.get("sol", 0)
-    hr    = tick % 24
+    hr    = tick % 48
     bat   = storage.get("energy.battery", 65.0)
     alert = storage.get("energy.alert", "Operação nominal")
 
@@ -527,9 +534,9 @@ def render(storage: DataStorage, tab_idx: int, paused: bool,
         row = ROW_CONTENT + i
         buf.append(goto(row, 1))
         if i < len(lines):
-            buf.append(BG_BASE + lines[i] + RESET)
+            buf.append(BG_BASE + lines[i] + BG_BASE + "\033[K" + RESET)
         else:
-            buf.append(BG_BASE + " " * TOTAL_W + RESET)
+            buf.append(BG_BASE + "\033[2K" + RESET)
 
     # FOOTER
     alert_c = RED if "ALERTA" in alert else (TEAL if "SUGESTÃO" in alert else GREEN)
@@ -547,10 +554,11 @@ def render(storage: DataStorage, tab_idx: int, paused: bool,
 # ─── ENTRY POINT ──────────────────────────────────────────────────────────────
 
 class Dashboard:
-    def __init__(self, module_manager=None, event_manager=None, crew_manager=None):
+    def __init__(self, module_manager=None, event_manager=None, crew_manager=None, pause_event=None):
         self.module_manager = module_manager
         self.event_manager  = event_manager
         self.crew_manager   = crew_manager
+        self.pause_event    = pause_event
         self._hist = {
             "bat":   deque([65.0] * CONTENT_W, maxlen=CONTENT_W),
             "gen":   deque([50.0] * (CONTENT_W // 2), maxlen=CONTENT_W // 2),
@@ -584,32 +592,63 @@ class Dashboard:
         sys.stdout.write(clr())
         sys.stdout.flush()
 
-        storage   = DataStorage()
-        tab_idx   = 0
-        paused    = False
-        tick_rate = 0.5
+        storage      = DataStorage()
+        tab_idx      = 0
+        paused       = False
+        tick_rate    = 0.5
+        poll_rate    = 0.05
+        last_tick    = time.monotonic()
 
         try:
             while True:
-                key = _get_key()
-                if key == "RIGHT":
-                    tab_idx = (tab_idx + 1) % len(TABS)
-                elif key == "LEFT":
-                    tab_idx = (tab_idx - 1) % len(TABS)
-                elif key in ("1", "2", "3", "4", "5", "6"):
-                    tab_idx = int(key) - 1
-                elif key == "PAUSE":
-                    paused = not paused
-                elif key == "Q":
+                # Drain ALL pending keystrokes so rapid presses jump straight
+                # to the final destination instead of walking through each tab.
+                pending = []
+                while True:
+                    k = _get_key()
+                    if k is None:
+                        break
+                    pending.append(k)
+
+                quit_requested = False
+                nav_changed    = False
+                for key in pending:
+                    if key == "RIGHT":
+                        tab_idx = (tab_idx + 1) % len(TABS)
+                        nav_changed = True
+                    elif key == "LEFT":
+                        tab_idx = (tab_idx - 1) % len(TABS)
+                        nav_changed = True
+                    elif key in ("1", "2", "3", "4", "5", "6"):
+                        tab_idx = int(key) - 1
+                        nav_changed = True
+                    elif key == "PAUSE":
+                        paused = not paused
+                        nav_changed = True
+                        if self.pause_event:
+                            if paused:
+                                self.pause_event.clear()
+                            else:
+                                self.pause_event.set()
+                    elif key == "Q":
+                        quit_requested = True
+                        break
+
+                if quit_requested:
                     break
 
-                if not paused:
-                    self._update_hist(storage)
+                now = time.monotonic()
+                tick_due = (now - last_tick) >= tick_rate
 
-                render(storage, tab_idx, paused,
-                       self._hist, self.module_manager,
-                       self.event_manager, self.crew_manager)
-                time.sleep(tick_rate)
+                if tick_due or nav_changed:
+                    if tick_due and not paused:
+                        self._update_hist(storage)
+                        last_tick = now
+                    render(storage, tab_idx, paused,
+                           self._hist, self.module_manager,
+                           self.event_manager, self.crew_manager)
+
+                time.sleep(poll_rate)
 
         except KeyboardInterrupt:
             pass

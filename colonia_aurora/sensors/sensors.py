@@ -6,17 +6,17 @@ from colonia_aurora.sensors.sensor import Sensor
 
 class TemperatureSensor(Sensor):
     def __init__(self):
-        super().__init__("temperature", min_val=-70.0, max_val=20.0, variation=0.5, initial=-30.0)
+        super().__init__("temperature", min_val=-140.0, max_val=30.0, variation=2.0, initial=-60.0)
 
 
 class WindSpeedSensor(Sensor):
     def __init__(self):
-        super().__init__("wind_speed", min_val=0.0, max_val=50.0, variation=1.0, initial=8.0)
+        super().__init__("wind_speed", min_val=0.0, max_val=100.0, variation=2.0, initial=12.0)
 
 
 class SolarIrradianceSensor(Sensor):
     def __init__(self):
-        super().__init__("solar_irradiance", min_val=0.0, max_val=600.0, variation=20.0, initial=200.0)
+        super().__init__("solar_irradiance", min_val=0.0, max_val=590.0, variation=15.0, initial=440.0)
 
 
 class RainSensor(Sensor):
@@ -35,14 +35,14 @@ class DayNightSensor(Sensor):
 
     def do(self) -> float:
         tick = DataStorage().get("tick", 0)
-        angle = (tick % 24) / 24 * 2 * math.pi
+        angle = (tick % 48) / 48 * 2 * math.pi
         self.current_val = (math.cos(angle - math.pi) + 1) / 2
         return self.current_val
 
 
 class DustSensor(Sensor):
     def __init__(self):
-        super().__init__("dust", min_val=0.0, max_val=1.0, variation=0.02, initial=0.1)
+        super().__init__("dust", min_val=0.0, max_val=1.0, variation=0.02, initial=0.15)
 
 
 SENSOR_STORAGE_KEY = {
@@ -73,16 +73,16 @@ class SensorManager(GenericManager):
             if key:
                 storage.set(key, val)
 
-        # Aplica modificadores de evento após leitura base
+        # Aplica modificadores de evento após leitura base (ajustados para Marte)
         if event == "ColdFront":
             irr = storage.get("sensor.solar_irradiance", 0)
-            storage.set("sensor.solar_irradiance", max(0.0, irr * 0.6))
-            temp = storage.get("sensor.temperature", -30)
-            storage.set("sensor.temperature", temp - 10)
+            storage.set("sensor.solar_irradiance", max(0.0, irr * 0.5))
+            temp = storage.get("sensor.temperature", -60)
+            storage.set("sensor.temperature", max(-140.0, temp - 30))
 
         elif event == "Sandstorm":
             irr = storage.get("sensor.solar_irradiance", 0)
-            storage.set("sensor.solar_irradiance", max(0.0, irr * 0.2))
+            storage.set("sensor.solar_irradiance", max(0.0, irr * 0.15))
             wind = storage.get("sensor.wind_speed", 0)
-            storage.set("sensor.wind_speed", min(50.0, wind + 15))
-            storage.set("sensor.dust", min(1.0, storage.get("sensor.dust", 0.1) + 0.4))
+            storage.set("sensor.wind_speed", min(100.0, wind + 40))
+            storage.set("sensor.dust", min(1.0, storage.get("sensor.dust", 0.15) + 0.5))

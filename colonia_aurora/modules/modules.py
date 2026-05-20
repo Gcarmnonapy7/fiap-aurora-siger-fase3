@@ -36,7 +36,7 @@ class NuclearModule(Module):
 
 
 class WindModule(Module):
-    def __init__(self, wind_k: float = 0.002, instance_num: int = 1, _id: int = None):
+    def __init__(self, wind_k: float = 0.0003, instance_num: int = 1, _id: int = None):
         name = "Eólico" if instance_num == 1 else f"Eólico-{instance_num}"
         super().__init__(id=_id or 6, name=name, type="wind", priority=6,
                          consumption_kw=1.0, criticality=5)
@@ -305,7 +305,7 @@ class ModuleManager(GenericManager):
         return [m for m in self._map.values() if m.active and not m.broken]
 
     def all_modules(self) -> list:
-        return sorted(self._heap)
+        return sorted(self._map.values(), key=lambda m: m.priority)
 
     def spawn_random(self, available_types: list) -> Module:
         """Spawna módulo aleatório SEM filtro de tipo — duplicatas permitidas."""
