@@ -1,8 +1,7 @@
 import csv
 import os
+from datetime import datetime
 from colonia_aurora.core.storage import DataStorage
-
-LOG_FILE = "simulation_log.csv"
 
 COLUMNS = [
     "tick", "sol", "sensor.temperature", "sensor.wind_speed",
@@ -16,16 +15,12 @@ COLUMNS = [
 
 class Logger:
     def __init__(self):
-        self._file_ready = False
-        self._init_csv()
-
-    def _init_csv(self):
-        write_header = not os.path.exists(LOG_FILE)
-        self._f = open(LOG_FILE, "a", newline="", encoding="utf-8")
+        os.makedirs("logs", exist_ok=True)
+        ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        log_path = os.path.join("logs", f"{ts}.csv")
+        self._f      = open(log_path, "w", newline="", encoding="utf-8")
         self._writer = csv.DictWriter(self._f, fieldnames=COLUMNS, extrasaction="ignore")
-        if write_header:
-            self._writer.writeheader()
-        self._file_ready = True
+        self._writer.writeheader()
 
     def log(self, tick: int, storage: DataStorage):
         snap = storage.snapshot()
@@ -53,13 +48,11 @@ class Logger:
         )
 
         # CSV
-        if self._file_ready:
-            self._writer.writerow(snap)
-            self._f.flush()
+        self._writer.writerow(snap)
+        self._f.flush()
 
     def log_event(self, message: str):
         print(f"  *** {message}")
 
     def close(self):
-        if self._file_ready:
-            self._f.close()
+        self._f.close()
