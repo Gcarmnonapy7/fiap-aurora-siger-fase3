@@ -30,8 +30,8 @@ class CrewMember(Item):
             self.health = max(0.0, self.health - 0.05)
             if self.health == 0.0:
                 self.status = "incapacitated"
-        elif level in ("HIGH", "SURPLUS"):
-            self.health = min(1.0, self.health + 0.01)
+        elif level != "CRITICAL":
+            self.health = min(1.0, self.health + 0.05)
             if self.status == "incapacitated" and self.health > 0.0:
                 self.status = "idle"
 
