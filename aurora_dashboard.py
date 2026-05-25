@@ -692,7 +692,7 @@ def main():
     sim       = Sim()
     tab_idx   = 0
     running   = True
-    TICK_RATE = 0.5  # segundos
+    TICK_RATE = 0.05  # segundos
 
     try:
         while running:

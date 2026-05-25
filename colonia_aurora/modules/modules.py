@@ -58,7 +58,8 @@ class CommandModule(Module):
 
     def energy_logic(self, level: str):
         self.active = True
-        self.consumption_kw = 3.0 if level == "CRITICAL" else 5.0
+        factor = max(0.6, self._power_factor())
+        self.consumption_kw = round(5.0 * factor, 2)
         return self.consumption_kw
 
 
@@ -69,7 +70,12 @@ class LifeSupportModule(Module):
 
     def energy_logic(self, level: str):
         self.active = True
-        self.consumption_kw = 12.0 if level == "CRITICAL" else 20.0
+        temp = DataStorage().get("sensor.temperature", -60.0)
+        temp_factor = 1.0 + max(-0.3, min(0.5, (-60.0 - temp) / 160.0))
+        module_count = DataStorage().get("modules.count", 4)
+        extra = max(0, module_count - 4) * 2.0
+        nominal = 20.0 * temp_factor + extra
+        self.consumption_kw = round(nominal * max(0.6, self._power_factor()), 2)
         return self.consumption_kw
 
 
@@ -80,14 +86,8 @@ class HabitatModule(Module):
 
     def energy_logic(self, level: str):
         self.active = True
-        if level == "CRITICAL":
-            self.consumption_kw = 8.0
-        elif level == "LOW":
-            self.consumption_kw = 10.0
-        elif level == "SURPLUS":
-            self.consumption_kw = 18.0
-        else:
-            self.consumption_kw = 15.0
+        nominal = 18.0 if level == "SURPLUS" else 15.0
+        self.consumption_kw = round(nominal * self._power_factor(), 2)
         return self.consumption_kw
 
 
@@ -98,15 +98,8 @@ class CommsModule(Module):
                          consumption_kw=8.0, criticality=4)
 
     def energy_logic(self, level: str):
-        if level == "CRITICAL":
-            self.active = True
-            self.consumption_kw = 2.0
-        elif level == "LOW":
-            self.active = True
-            self.consumption_kw = 4.0
-        else:
-            self.active = True
-            self.consumption_kw = 8.0
+        self.active = True
+        self.consumption_kw = round(8.0 * self._power_factor(), 2)
         return self.consumption_kw
 
 
@@ -117,15 +110,8 @@ class MedicalModule(Module):
                          consumption_kw=10.0, criticality=4)
 
     def energy_logic(self, level: str):
-        if level == "CRITICAL":
-            self.active = True
-            self.consumption_kw = 6.0
-        elif level == "LOW":
-            self.active = True
-            self.consumption_kw = 8.0
-        else:
-            self.active = True
-            self.consumption_kw = 10.0
+        self.active = True
+        self.consumption_kw = round(10.0 * self._power_factor(), 2)
         return self.consumption_kw
 
 
@@ -139,12 +125,10 @@ class FoodModule(Module):
         if level == "CRITICAL":
             self.active = False
             self.consumption_kw = 0.0
-        elif level == "LOW":
-            self.active = True
-            self.consumption_kw = 4.0
-        else:
-            self.active = True
-            self.consumption_kw = 12.0
+            return self.consumption_kw
+        self.active = True
+        nominal = 4.0 if level == "LOW" else 12.0
+        self.consumption_kw = round(nominal * self._power_factor(), 2)
         return self.consumption_kw
 
 
@@ -158,12 +142,10 @@ class LogisticsModule(Module):
         if level == "CRITICAL":
             self.active = False
             self.consumption_kw = 0.0
-        elif level == "LOW":
-            self.active = True
-            self.consumption_kw = 3.0
-        else:
-            self.active = True
-            self.consumption_kw = 6.0
+            return self.consumption_kw
+        self.active = True
+        nominal = 3.0 if level == "LOW" else 6.0
+        self.consumption_kw = round(nominal * self._power_factor(), 2)
         return self.consumption_kw
 
 
@@ -177,12 +159,10 @@ class ISRUModule(Module):
         if level in ("CRITICAL", "LOW"):
             self.active = False
             self.consumption_kw = 0.0
-        elif level == "SURPLUS":
-            self.active = True
-            self.consumption_kw = round(18.0 * 1.2, 2)
-        else:
-            self.active = True
-            self.consumption_kw = 18.0
+            return self.consumption_kw
+        self.active = True
+        nominal = round(18.0 * 1.2, 2) if level == "SURPLUS" else 18.0
+        self.consumption_kw = round(nominal * self._power_factor(), 2)
         return self.consumption_kw
 
 
@@ -193,15 +173,15 @@ class WorkshopModule(Module):
                          consumption_kw=8.0, criticality=2)
 
     def energy_logic(self, level: str):
+        self.active = True
+        factor = self._power_factor()
         if level == "CRITICAL":
-            self.active = True
-            self.consumption_kw = 3.0
+            nominal = 3.0
         elif level == "LOW":
-            self.active = True
-            self.consumption_kw = 5.0
+            nominal = 5.0
         else:
-            self.active = True
-            self.consumption_kw = 8.0
+            nominal = 8.0
+        self.consumption_kw = round(nominal * factor, 2)
         return self.consumption_kw
 
 
@@ -215,9 +195,9 @@ class LabModule(Module):
         if level in ("CRITICAL", "LOW"):
             self.active = False
             self.consumption_kw = 0.0
-        else:
-            self.active = True
-            self.consumption_kw = 10.0
+            return self.consumption_kw
+        self.active = True
+        self.consumption_kw = round(10.0 * self._power_factor(), 2)
         return self.consumption_kw
 
 
@@ -228,15 +208,8 @@ class SensorsModule(Module):
                          consumption_kw=3.0, criticality=4)
 
     def energy_logic(self, level: str):
-        if level == "CRITICAL":
-            self.active = True
-            self.consumption_kw = 1.0
-        elif level == "LOW":
-            self.active = True
-            self.consumption_kw = 2.0
-        else:
-            self.active = True
-            self.consumption_kw = 3.0
+        self.active = True
+        self.consumption_kw = round(3.0 * self._power_factor(), 2)
         return self.consumption_kw
 
 
@@ -264,6 +237,8 @@ class ModuleManager(GenericManager):
         self._map  = {}           # id → Module
         self._id_counter = 100    # IDs ≥ 101 são auto-gerados (evita conflito com IDs fixos 1–14)
         self._type_count = {}     # cls → quantidade de instâncias já adicionadas
+        self._spawn_bag: list = []
+        self._reset_bag()
 
     def _next_id(self) -> int:
         self._id_counter += 1
@@ -307,18 +282,49 @@ class ModuleManager(GenericManager):
     def all_modules(self) -> list:
         return sorted(self._map.values(), key=lambda m: m.priority)
 
+    def _reset_bag(self):
+        self._spawn_bag = list(SPAWNABLE_GENERATION + SPAWNABLE_CONSUMPTION)
+        random.shuffle(self._spawn_bag)
+
+    def mark_spawned(self, cls) -> None:
+        """Remove um tipo do bag atual — para módulos pré-instanciados no startup."""
+        try:
+            self._spawn_bag.remove(cls)
+        except ValueError:
+            pass
+
+    def spawn_from_bag(self) -> Module:
+        """Retira um tipo do shuffle bag e instancia; reinicia o bag quando esvazia."""
+        if not self._spawn_bag:
+            self._reset_bag()
+        ModuleClass = self._spawn_bag.pop()
+        current_count = self._type_count.get(ModuleClass, 0)
+        new_module = ModuleClass(instance_num=current_count + 1, _id=self._next_id())
+        self.add(new_module)
+        return new_module
+
     def spawn_random(self, available_types: list) -> Module:
         """Spawna módulo aleatório SEM filtro de tipo — duplicatas permitidas."""
         if not available_types:
             return None
         ModuleClass = random.choice(available_types)
-        # inst_num = contagem APÓS o add (add incrementa _type_count)
         current_count = self._type_count.get(ModuleClass, 0)
         inst_num = current_count + 1
         new_module = ModuleClass(instance_num=inst_num, _id=self._next_id())
-        self.add(new_module)  # incrementa _type_count para current_count+1
+        self.add(new_module)
         return new_module
 
     def spawn_generation(self) -> Module:
-        """Força spawn de módulo de geração — chamado quando energia está LOW/CRITICAL."""
+        """Força spawn de módulo de geração — chamado quando energia está CRITICAL."""
         return self.spawn_random(SPAWNABLE_GENERATION)
+
+    def publish_snapshot(self, storage) -> None:
+        storage.set("modules.snapshot", [
+            {
+                "id": m.id, "name": m.name, "type": m.type,
+                "priority": m.priority, "criticality": m.criticality,
+                "consumption_kw": m.consumption_kw,
+                "active": m.active, "broken": m.broken,
+            }
+            for m in self.all_modules()
+        ])

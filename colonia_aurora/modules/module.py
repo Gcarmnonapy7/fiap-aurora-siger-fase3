@@ -25,5 +25,15 @@ class Module(Item):
         level = storage.get("energy.level", "NOMINAL")
         return self.energy_logic(level)
 
+    def _power_factor(self) -> float:
+        bat = DataStorage().get("energy.battery", 65.0)
+        if bat >= 50.0:
+            return 1.0
+        elif bat >= 30.0:
+            return 0.7 + (bat - 30.0) / 20.0 * 0.3
+        elif bat >= 10.0:
+            return 0.4 + (bat - 10.0) / 20.0 * 0.3
+        return 0.2
+
     def energy_logic(self, level: str):
         raise NotImplementedError

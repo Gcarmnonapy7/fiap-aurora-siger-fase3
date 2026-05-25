@@ -29,24 +29,32 @@ class EnergyManager:
         # Import local para evitar circular (energy → modules → energy)
         from colonia_aurora.modules.modules import SolarModule, NuclearModule, WindModule
 
-        phase = storage.get("sensor.day_phase", 0)
         irrad = storage.get("sensor.solar_irradiance", 0)
         wind  = storage.get("sensor.wind_speed", 0)
         level = storage.get("energy.level", "NOMINAL")
 
         solar_gen = nuclear_gen = wind_gen = 0.0
 
-        for mod in module_manager._heap:
-            if not mod.active or mod.broken:
-                continue
+        for mod in module_manager.active_modules():
             if isinstance(mod, SolarModule):
-                solar_gen += mod.solar_area * irrad * SOLAR_EFFICIENCY * phase / 1000
+                # phase e dust já estão embutidos no sensor de irradiância
+                solar_gen += mod.solar_area * irrad * SOLAR_EFFICIENCY / 1000
             elif isinstance(mod, NuclearModule):
                 # Em SURPLUS, reduz 20% para evitar desperdício
                 factor = 0.8 if level == "SURPLUS" else 1.0
                 nuclear_gen += mod.rated_kw * factor
             elif isinstance(mod, WindModule):
                 wind_gen += _wind_curve(wind, mod.wind_k)
+
+        if wind >= WIND_CUTOUT:
+            wind_status = "DESLIGADO"
+        elif wind >= WIND_FURL:
+            wind_status = "EMBANDEIRADO"
+        elif wind >= WIND_CUT_IN:
+            wind_status = "OPERACIONAL"
+        else:
+            wind_status = "SEM VENTO"
+        storage.set("energy.wind_status", wind_status)
 
         return (
             round(solar_gen + wind_gen + nuclear_gen, 2),
@@ -56,11 +64,7 @@ class EnergyManager:
         )
 
     def _calculate_consumption(self, module_manager) -> float:
-        total = sum(
-            mod.consumption_kw
-            for mod in module_manager._heap
-            if mod.active and not mod.broken
-        )
+        total = sum(mod.consumption_kw for mod in module_manager.active_modules())
         return round(total, 2)
 
     def _determine_level(self, battery_pct: float, predicted_delta: float, slope: float) -> str:
@@ -99,6 +103,16 @@ class EnergyManager:
             return f"Geração: {generated:.1f} kW  Consumo: {consumed:.1f} kW  Saldo: {generated-consumed:+.1f} kW"
         return "Operação nominal"
 
+    @staticmethod
+    def _compute_power_factor(battery_pct: float) -> float:
+        if battery_pct >= 50.0:
+            return 1.0
+        elif battery_pct >= 30.0:
+            return 0.7 + (battery_pct - 30.0) / 20.0 * 0.3
+        elif battery_pct >= 10.0:
+            return 0.4 + (battery_pct - 10.0) / 20.0 * 0.3
+        return 0.2
+
     def calculate(self, module_manager):
         storage = DataStorage()
 
@@ -109,6 +123,7 @@ class EnergyManager:
         battery_kwh = storage.get("energy.battery_kwh", BATTERY_MAX * 0.65)
         battery_kwh = max(0.0, min(BATTERY_MAX, battery_kwh + delta))
         battery_pct = round((battery_kwh / BATTERY_MAX) * 100, 2)
+        storage.set("energy.power_factor", round(self._compute_power_factor(battery_pct), 3))
 
         delta_history = storage.history("energy.delta", last_n=HISTORY_WINDOW)
 

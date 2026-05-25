@@ -1,4 +1,7 @@
+import collections
 import threading
+
+_HISTORY_CAP = 200
 
 
 class DataStorage:
@@ -24,7 +27,7 @@ class DataStorage:
         with self._rw_lock:
             self._data[key] = value
             if key not in self._history:
-                self._history[key] = []
+                self._history[key] = collections.deque(maxlen=_HISTORY_CAP)
             self._history[key].append(value)
 
     def history(self, key: str, last_n: int = None) -> list:
@@ -32,7 +35,7 @@ class DataStorage:
             h = self._history.get(key, [])
             if last_n is None:
                 return list(h)
-            return list(h[-last_n:])
+            return list(h)[-last_n:]
 
     def snapshot(self) -> dict:
         with self._rw_lock:

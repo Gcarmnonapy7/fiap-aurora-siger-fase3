@@ -45,11 +45,10 @@ class EquipmentFailure(Event):
             duration_ticks=repair_ticks,
         )
         self.module = module
-        module.broken = True
-        module.active = False
 
     def apply(self, storage: DataStorage):
-        pass  # efeito já aplicado no __init__
+        self.module.broken = True
+        self.module.active = False
 
     def revert(self, storage: DataStorage):
         self.module.broken = False
@@ -66,12 +65,13 @@ class EventManager(GenericManager):
     def check_and_roll(self, module_manager, crew_manager, storage: DataStorage):
         # Processa evento climático ativo
         if self._active_event:
-            self._active_event.do()
             if self._active_event.expired:
                 self._event_log.append(f"Encerrado: {self._active_event.name}")
                 expired_evt = self._active_event
                 self._active_event = None      # limpa referência antes de reverter storage
                 expired_evt.revert(storage)
+            else:
+                self._active_event.do()
         else:
             # Rola para novo evento climático
             roll = random.random()
@@ -93,11 +93,12 @@ class EventManager(GenericManager):
         # Processa falhas de equipamento em andamento
         resolved = []
         for fail in self._failure_events:
-            fail.do()
             if fail.expired:
                 fail.revert(storage)
                 self._event_log.append(f"Reparado: {fail.module.name}")
                 resolved.append(fail)
+            else:
+                fail.do()
         for r in resolved:
             self._failure_events.remove(r)
 
@@ -106,6 +107,7 @@ class EventManager(GenericManager):
             if random.random() < 0.005:
                 repair_ticks = random.randint(2, 12)
                 fail = EquipmentFailure(mod, repair_ticks)
+                fail.apply(storage)
                 self._failure_events.append(fail)
                 self._event_log.append(f"FALHA: {mod.name} — reparo em {repair_ticks} ticks")
                 # Tenta alocar tripulante técnico
@@ -130,3 +132,8 @@ class EventManager(GenericManager):
     @property
     def log(self) -> list:
         return list(self._event_log[-30:])
+
+    def publish_state(self, storage) -> None:
+        storage.set("event.name",           self.active_event_name)
+        storage.set("event.duration_ticks", self.active_event_ticks)
+        storage.set("event.log",            self.log)

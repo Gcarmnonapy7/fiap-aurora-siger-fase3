@@ -32,12 +32,14 @@ class CrewMember(Item):
                 self.status = "incapacitated"
         elif level in ("HIGH", "SURPLUS"):
             self.health = min(1.0, self.health + 0.01)
+            if self.status == "incapacitated" and self.health > 0.0:
+                self.status = "idle"
 
     def _update_repair(self):
         if self.status == "repairing" and self.repair_ticks_left > 0:
             self.repair_ticks_left -= 1
             if self.repair_ticks_left == 0:
-                if self.assigned_module:
+                if self.assigned_module and self.assigned_module.broken:
                     self.assigned_module.broken = False
                     self.assigned_module.active = True
                 self.status = "idle"

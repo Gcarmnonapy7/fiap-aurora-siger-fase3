@@ -129,10 +129,12 @@ def hbar(val, mx, w, color):
     return color + BAR_F * filled + DIM_C + BAR_E * (w - filled) + RESET
 
 
-def sparkline(vals, w, h):
+def sparkline(vals, w, h, vmin=None, vmax=None):
     if not vals:
         return [DIM_C + "·" * w + RESET] * h
-    vmin = min(vals); vmax = max(vals); vr = vmax - vmin or 1
+    if vmin is None: vmin = min(vals)
+    if vmax is None: vmax = max(vals)
+    vr = (vmax - vmin) or 1
     data = [int(((v - vmin) / vr) * (h - 1)) for v in vals][-w:]
     while len(data) < w:
         data.insert(0, 0)
@@ -212,7 +214,7 @@ def screen_overview(storage: DataStorage, W: int, H: int, hist: dict) -> list:
     chart_h = max(3, H - 13)
     chart_w = W - 8
     lines.append(f"  {AMBER}Histórico da Bateria (%){RESET}")
-    spark = sparkline(list(hist["bat"]), chart_w, chart_h)
+    spark = sparkline(list(hist["bat"]), chart_w, chart_h, vmin=0, vmax=100)
     lbls  = {0: "100%", chart_h // 2: " 50%", chart_h - 1: "  0%"}
     for i, row in enumerate(spark):
         lbl = f"{GRAY}{lbls.get(i, '    ')}{RESET}"
@@ -221,13 +223,22 @@ def screen_overview(storage: DataStorage, W: int, H: int, hist: dict) -> list:
 
     lines.append(f"  {AMBER}Geração por Fonte{RESET}")
     bar_w = 28
+    wind_status = storage.get("energy.wind_status", "OPERACIONAL")
+    wind_status_clr = {
+        "OPERACIONAL": GREEN, "SEM VENTO": GRAY,
+        "EMBANDEIRADO": ORANGE, "DESLIGADO": RED,
+    }.get(wind_status, GRAY)
     for label, val, c in [
-        ("☀ Solar",    solar, GREEN),
-        ("💨 Eólico",   wind,  TEAL),
-        ("⚛ Nuclear",  nuc,   AMBER),
+        ("☀ Solar",   solar, GREEN),
+        ("⚛ Nuclear", nuc,   AMBER),
     ]:
         b = hbar(val, gen if gen > 0 else 1, bar_w, c)
         lines.append(f"  {GRAY}{label:<10}{RESET} {b} {c}{val:6.1f} kW{RESET}")
+    b = hbar(wind, gen if gen > 0 else 1, bar_w, TEAL)
+    lines.append(
+        f"  {GRAY}{'💨 Eólico':<10}{RESET} {b} {TEAL}{wind:6.1f} kW{RESET}"
+        f"  {wind_status_clr}[{wind_status}]{RESET}"
+    )
 
     lines.append(DIM_C + HLINE * W + RESET)
     lines.append(
@@ -248,19 +259,45 @@ def screen_energia(storage: DataStorage, W: int, H: int, hist: dict) -> list:
 
     lines.append(f"  {AMBER}Bateria (%) — histórico{RESET}")
     lines.append(DIM_C + HLINE * W + RESET)
-    spark = sparkline(list(hist["bat"]), W - 6, ch)
+    spark = sparkline(list(hist["bat"]), W - 6, ch, vmin=0, vmax=100)
     lbls  = {0: "100%", ch // 2: " 50%", ch - 1: "  0%"}
     for i, row in enumerate(spark):
         lines.append(f"  {GRAY}{lbls.get(i,'    ')}{RESET} {row}")
     lines.append(DIM_C + HLINE * W + RESET)
 
-    gen_lines = miniline(list(hist["gen"]), half, ch)
-    con_lines = miniline(list(hist["con"]), half, ch)
+    scale_w = 6
+    chart_w = half - scale_w
+
+    gen_vals = list(hist["gen"])
+    con_vals = list(hist["con"])
+
+    gen_min = min(gen_vals) if gen_vals else 0.0
+    gen_max = max(gen_vals) if gen_vals else 0.0
+    con_min = min(con_vals) if con_vals else 0.0
+    con_max = max(con_vals) if con_vals else 0.0
+
+    gen_lines = miniline(gen_vals, chart_w, ch)
+    con_lines = miniline(con_vals, chart_w, ch)
+
+    gen_lbls = {
+        0:        f"{gen_max:5.1f}",
+        ch // 2:  f"{(gen_max + gen_min) / 2:5.1f}",
+        ch - 1:   f"{gen_min:5.1f}",
+    }
+    con_lbls = {
+        0:        f"{con_max:5.1f}",
+        ch // 2:  f"{(con_max + con_min) / 2:5.1f}",
+        ch - 1:   f"{con_min:5.1f}",
+    }
+
     lines.append(
-        f"  {TEAL}Geração kW{' ' * (half - 8)}  {RED}Consumo kW{RESET}"
+        f"  {' ' * scale_w}{TEAL}Geração kW{' ' * (chart_w - 10)}"
+        f"   {' ' * scale_w}{RED}Consumo kW{RESET}"
     )
-    for gl, cl in zip(gen_lines, con_lines):
-        lines.append(f"  {gl}   {cl}")
+    for i, (gl, cl) in enumerate(zip(gen_lines, con_lines)):
+        g_lbl = f"{GRAY}{gen_lbls.get(i, '     ')}{RESET} "
+        c_lbl = f"{GRAY}{con_lbls.get(i, '     ')}{RESET} "
+        lines.append(f"  {g_lbl}{gl}   {c_lbl}{cl}")
     lines.append(DIM_C + HLINE * W + RESET)
 
     gen  = storage.get("energy.generated", 0.0)
@@ -495,7 +532,7 @@ def render(storage: DataStorage, tab_idx: int, paused: bool,
         + " " * max(0, TOTAL_W - 68)
         + f"{GRAY}Energia:{lc}{BOLD} {level:<9}{RESET}{BG_HEADER}"
         f"  {GRAY}Bat:{lc}{bat:5.1f}%{RESET}{BG_HEADER}"
-        + "   " + RESET
+        + "   " + "\033[K" + RESET
     )
     buf.append(header)
 
@@ -507,10 +544,11 @@ def render(storage: DataStorage, tab_idx: int, paused: bool,
             tab_line += f"{BG_TAB_ON}{AMBER}{BOLD}{label}{RESET}{BG_PANEL}{GRAY}│{RESET}{BG_PANEL}"
         else:
             tab_line += f"{GRAY}{label}{RESET}{BG_PANEL}{DIM_C}│{RESET}{BG_PANEL}"
+    tab_line += "\033[K"
     buf.append(tab_line)
 
     # HINT
-    hint = f"{goto(ROW_HINT, 1)}{BG_PANEL}  {DIM_C}← → ou 1-6 navegar  ·  P pausar  ·  Q sair{RESET}"
+    hint = f"{goto(ROW_HINT, 1)}{BG_PANEL}  {DIM_C}← → ou 1-6 navegar  ·  P pausar  ·  Q sair\033[K{RESET}"
     buf.append(hint)
 
     # SEP

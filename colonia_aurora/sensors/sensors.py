@@ -17,6 +17,20 @@ class WindSpeedSensor(Sensor):
 class SolarIrradianceSensor(Sensor):
     def __init__(self):
         super().__init__("solar_irradiance", min_val=0.0, max_val=590.0, variation=15.0, initial=440.0)
+        self._base_irradiance = 440.0
+
+    def do(self) -> float:
+        import random as _random
+        self._base_irradiance = max(200.0, min(590.0,
+            self._base_irradiance + _random.uniform(-self.variation, self.variation)))
+        storage = DataStorage()
+        tick = storage.get("tick", 0)
+        angle = (tick % 48) / 48 * 2 * math.pi
+        phase = (math.cos(angle - math.pi) + 1) / 2
+        dust = storage.get("sensor.dust", 0.15)
+        dust_factor = max(0.05, (1.0 - dust) ** 1.5)
+        self.current_val = round(self._base_irradiance * (phase ** 2) * dust_factor, 2)
+        return self.current_val
 
 
 class RainSensor(Sensor):
@@ -59,8 +73,8 @@ SENSOR_STORAGE_KEY = {
 class SensorManager(GenericManager):
     def __init__(self):
         super().__init__()
-        for cls in [TemperatureSensor, WindSpeedSensor, SolarIrradianceSensor,
-                    RainSensor, WindDirectionSensor, DayNightSensor, DustSensor]:
+        for cls in [TemperatureSensor, WindSpeedSensor, DustSensor, SolarIrradianceSensor,
+                    RainSensor, WindDirectionSensor, DayNightSensor]:
             self.add(cls())
 
     def do_all(self):
