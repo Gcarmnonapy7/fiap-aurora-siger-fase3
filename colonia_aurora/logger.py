@@ -27,32 +27,12 @@ class Logger:
         snap["tick"] = tick
         snap["sol"]  = storage.get("sol", 0)
 
-        # Console
-        level = snap.get("energy.level", "?")
-        bat   = snap.get("energy.battery", 0)
-        gen   = snap.get("energy.generated", 0)
-        con   = snap.get("energy.consumed", 0)
-        alert = snap.get("energy.alert", "")
-
-        if "ALERTA" in alert:
-            prefix = "⚠ "
-        elif "SUGESTÃO" in alert:
-            prefix = "✓ "
-        else:
-            prefix = "  "
-
-        print(
-            f"[T{tick:05d} Sol{snap.get('sol',0):02d}] "
-            f"Bat:{bat:5.1f}%  Gen:{gen:6.1f}kW  Con:{con:6.1f}kW  "
-            f"Nível:{level:<8}  {prefix}{alert}"
-        )
-
         # CSV
         self._writer.writerow(snap)
         self._f.flush()
 
     def log_event(self, message: str):
-        print(f"  *** {message}")
+        pass
 
     def close(self):
         self._f.close()

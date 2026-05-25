@@ -65,6 +65,7 @@ def main():
         event_manager=event_manager,
         crew_manager=crew_manager,
         pause_event=pause_event,
+        tick_rate=TICK_RATE,
     )
     try:
         dash.run()

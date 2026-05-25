@@ -23,8 +23,10 @@ def fg(r, g, b): return f"{ESC}[38;2;{r};{g};{b}m"
 def bg(r, g, b): return f"{ESC}[48;2;{r};{g};{b}m"
 def goto(r, c):  return f"{ESC}[{r};{c}H"
 def clr():       return f"{ESC}[2J{ESC}[H"
-def hide_cur():  sys.stdout.write(f"{ESC}[?25l"); sys.stdout.flush()
-def show_cur():  sys.stdout.write(f"{ESC}[?25h"); sys.stdout.flush()
+def hide_cur():   sys.stdout.write(f"{ESC}[?25l"); sys.stdout.flush()
+def show_cur():   sys.stdout.write(f"{ESC}[?25h"); sys.stdout.flush()
+def alt_screen(): sys.stdout.write(f"{ESC}[?1049h"); sys.stdout.flush()
+def norm_screen():sys.stdout.write(f"{ESC}[?1049l"); sys.stdout.flush()
 
 
 AMBER  = fg(245, 158, 11);  AMBER_D = fg(120, 75, 5)
@@ -511,7 +513,7 @@ TABS = [
 # ─── RENDERER ─────────────────────────────────────────────────────────────────
 
 def render(storage: DataStorage, tab_idx: int, paused: bool,
-           hist: dict, module_manager, event_manager, crew_manager):
+           hist: dict, module_manager, event_manager, crew_manager, tick_rate: float = 0.5):
     buf = []
     level = storage.get("energy.level", "NOMINAL")
     lc    = LEVEL_CLR.get(level, WHITE)
@@ -581,10 +583,11 @@ def render(storage: DataStorage, tab_idx: int, paused: bool,
     footer = (
         f"{goto(ROW_FOOTER, 1)}{BG_HEADER}"
         f"  {alert_c}{alert[:TOTAL_W - 30]:<{TOTAL_W - 30}}{RESET}{BG_HEADER}"
-        f"  {DIM_C}tickrate: 0.5s/tick{RESET}"
+        f"  {DIM_C}tickrate: {tick_rate}s/tick{RESET}"
         + "   " + RESET
     )
     buf.append(footer)
+    buf.append(goto(1, 1))  # park cursor at top so terminal doesn't scroll on keypress
 
     sys.stdout.write("".join(buf))
     sys.stdout.flush()
@@ -592,11 +595,12 @@ def render(storage: DataStorage, tab_idx: int, paused: bool,
 # ─── ENTRY POINT ──────────────────────────────────────────────────────────────
 
 class Dashboard:
-    def __init__(self, module_manager=None, event_manager=None, crew_manager=None, pause_event=None):
+    def __init__(self, module_manager=None, event_manager=None, crew_manager=None, pause_event=None, tick_rate: float = 0.5):
         self.module_manager = module_manager
         self.event_manager  = event_manager
         self.crew_manager   = crew_manager
         self.pause_event    = pause_event
+        self._tick_rate     = tick_rate
         self._hist = {
             "bat":   deque([65.0] * CONTENT_W, maxlen=CONTENT_W),
             "gen":   deque([50.0] * (CONTENT_W // 2), maxlen=CONTENT_W // 2),
@@ -626,6 +630,7 @@ class Dashboard:
         except OSError:
             pass
 
+        alt_screen()
         hide_cur()
         sys.stdout.write(clr())
         sys.stdout.flush()
@@ -633,7 +638,7 @@ class Dashboard:
         storage      = DataStorage()
         tab_idx      = 0
         paused       = False
-        tick_rate    = 0.5
+        tick_rate    = self._tick_rate
         poll_rate    = 0.05
         last_tick    = time.monotonic()
 
@@ -684,7 +689,7 @@ class Dashboard:
                         last_tick = now
                     render(storage, tab_idx, paused,
                            self._hist, self.module_manager,
-                           self.event_manager, self.crew_manager)
+                           self.event_manager, self.crew_manager, tick_rate)
 
                 time.sleep(poll_rate)
 
@@ -694,7 +699,8 @@ class Dashboard:
             if sys.platform != "win32":
                 _disable_raw()
             show_cur()
-            sys.stdout.write(f"{goto(TOTAL_H + 1, 1)}{RESET}\n")
+            norm_screen()
+            sys.stdout.write(f"{RESET}\n")
             tick = storage.get("tick", 0)
             sol  = storage.get("sol", 0)
             print(f"\n{AMBER}Simulação encerrada — Sol {sol}, Tick {tick}{RESET}\n")
