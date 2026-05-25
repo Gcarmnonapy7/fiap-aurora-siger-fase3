@@ -113,9 +113,9 @@ class SimulationLoop:
     # ── Spawn de módulo + tripulante operador ──────────────────────────────────
 
     def _maybe_spawn(self, tick: int) -> None:
-        if random.random() >= self._spawn_prob:
-            return
         level = self._storage.get("energy.level", "NOMINAL")
+        if (random.random() >= self._spawn_prob) and (level != "CRITICAL"):
+            return
         if level == "CRITICAL":
             new_mod = self._module_manager.spawn_generation()
             tag = "GERAÇÃO FORÇADA"
