@@ -21,7 +21,7 @@ from colonia_aurora.crew.crew import CrewMember, CrewManager
 from colonia_aurora.logger import Logger
 from colonia_aurora.display.dashboard import Dashboard
 
-TICK_RATE  = 0.001
+TICK_RATE  = 0.5
 SPAWN_PROB = 0.02
 SOL_TICKS  = 24
 
