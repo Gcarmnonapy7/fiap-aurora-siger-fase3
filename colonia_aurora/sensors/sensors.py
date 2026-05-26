@@ -25,7 +25,8 @@ class SolarIrradianceSensor(Sensor):
             self._base_irradiance + _random.uniform(-self.variation, self.variation)))
         storage = DataStorage()
         tick = storage.get("tick", 0)
-        angle = (tick % 48) / 48 * 2 * math.pi
+        sol_ticks = storage.get("config.sol_ticks", 48)
+        angle = (tick % sol_ticks) / sol_ticks * 2 * math.pi
         phase = (math.cos(angle - math.pi) + 1) / 2
         dust = storage.get("sensor.dust", 0.15)
         dust_factor = max(0.05, (1.0 - dust) ** 1.5)
@@ -48,8 +49,10 @@ class DayNightSensor(Sensor):
         super().__init__("day_phase", min_val=0.0, max_val=1.0, variation=0.0, initial=0.0)
 
     def do(self) -> float:
-        tick = DataStorage().get("tick", 0)
-        angle = (tick % 48) / 48 * 2 * math.pi
+        storage = DataStorage()
+        tick = storage.get("tick", 0)
+        sol_ticks = storage.get("config.sol_ticks", 48)
+        angle = (tick % sol_ticks) / sol_ticks * 2 * math.pi
         self.current_val = (math.cos(angle - math.pi) + 1) / 2
         return self.current_val
 

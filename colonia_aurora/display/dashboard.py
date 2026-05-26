@@ -517,9 +517,10 @@ def render(storage: DataStorage, tab_idx: int, paused: bool,
     buf = []
     level = storage.get("energy.level", "NOMINAL")
     lc    = LEVEL_CLR.get(level, WHITE)
-    tick  = storage.get("tick", 0)
-    sol   = storage.get("sol", 0)
-    hr    = tick % 48
+    tick      = storage.get("tick", 0)
+    sol       = storage.get("sol", 0)
+    sol_ticks = storage.get("config.sol_ticks", 48)
+    hr        = (tick % sol_ticks) * 24 // sol_ticks
     bat   = storage.get("energy.battery", 65.0)
     alert = storage.get("energy.alert", "Operação nominal")
 

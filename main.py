@@ -20,7 +20,7 @@ from colonia_aurora.display.dashboard import Dashboard
 
 TICK_RATE  = 0.5
 SPAWN_PROB = 0.02
-SOL_TICKS  = 48
+SOL_TICKS  = 24
 
 
 def main():
@@ -39,6 +39,8 @@ def main():
     for name, role in [("Ana", "engineer"), ("Bruno", "medic"),
                        ("Carla", "scientist"), ("Diego", "commander")]:
         crew_manager.add(CrewMember(name, role))
+
+    storage.set("config.sol_ticks", SOL_TICKS)
 
     stop_flag   = threading.Event()
     pause_event = threading.Event()
