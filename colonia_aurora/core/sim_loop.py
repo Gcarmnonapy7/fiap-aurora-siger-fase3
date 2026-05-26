@@ -1,6 +1,7 @@
 import logging
-import random
 import threading
+
+from colonia_aurora.seed import rng
 import time
 
 from colonia_aurora.crew.crew import CrewMember
@@ -114,7 +115,7 @@ class SimulationLoop:
 
     def _maybe_spawn(self, tick: int) -> None:
         level = self._storage.get("energy.level", "NOMINAL")
-        if (random.random() >= self._spawn_prob) and (level != "CRITICAL"):
+        if (rng.random() >= self._spawn_prob) and (level != "CRITICAL"):
             return
         if level == "CRITICAL":
             new_mod = self._module_manager.spawn_generation()
@@ -129,5 +130,5 @@ class SimulationLoop:
     def _add_crew_for_spawn(self, tick: int) -> None:
         # Novo módulo requer um operador: crew cresce junto com a colônia.
         self._crew_manager.add(
-            CrewMember(f"Tripulante_{tick}", random.choice(CrewMember.ROLES))
+            CrewMember(f"Tripulante_{tick}", rng.choice(CrewMember.ROLES))
         )

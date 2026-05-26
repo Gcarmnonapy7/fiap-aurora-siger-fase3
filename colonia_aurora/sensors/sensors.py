@@ -1,4 +1,5 @@
 import math
+from colonia_aurora.seed import rng
 from colonia_aurora.core.storage import DataStorage
 from colonia_aurora.core.manager import GenericManager
 from colonia_aurora.sensors.sensor import Sensor
@@ -20,9 +21,8 @@ class SolarIrradianceSensor(Sensor):
         self._base_irradiance = 440.0
 
     def do(self) -> float:
-        import random as _random
         self._base_irradiance = max(200.0, min(590.0,
-            self._base_irradiance + _random.uniform(-self.variation, self.variation)))
+            self._base_irradiance + rng.uniform(-self.variation, self.variation)))
         storage = DataStorage()
         tick = storage.get("tick", 0)
         sol_ticks = storage.get("config.sol_ticks", 48)

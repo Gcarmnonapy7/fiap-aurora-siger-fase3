@@ -1,5 +1,5 @@
 import heapq
-import random
+from colonia_aurora.seed import rng
 from colonia_aurora.core.storage import DataStorage
 from colonia_aurora.core.manager import GenericManager
 from colonia_aurora.modules.module import Module
@@ -284,7 +284,7 @@ class ModuleManager(GenericManager):
 
     def _reset_bag(self):
         self._spawn_bag = list(SPAWNABLE_GENERATION + SPAWNABLE_CONSUMPTION)
-        random.shuffle(self._spawn_bag)
+        rng.shuffle(self._spawn_bag)
 
     def mark_spawned(self, cls) -> None:
         """Remove um tipo do bag atual — para módulos pré-instanciados no startup."""
@@ -307,7 +307,7 @@ class ModuleManager(GenericManager):
         """Spawna módulo aleatório SEM filtro de tipo — duplicatas permitidas."""
         if not available_types:
             return None
-        ModuleClass = random.choice(available_types)
+        ModuleClass = rng.choice(available_types)
         current_count = self._type_count.get(ModuleClass, 0)
         inst_num = current_count + 1
         new_module = ModuleClass(instance_num=inst_num, _id=self._next_id())

@@ -1,4 +1,4 @@
-import random
+from colonia_aurora.seed import rng
 from colonia_aurora.core.storage import DataStorage
 from colonia_aurora.core.manager import GenericManager
 from colonia_aurora.events.event import Event
@@ -10,7 +10,7 @@ class ColdFront(Event):
             name="Frente Fria",
             type="ColdFront",
             severity=2,
-            duration_ticks=random.randint(12, 48),
+            duration_ticks=rng.randint(12, 48),
         )
 
     def apply(self, storage: DataStorage):
@@ -26,7 +26,7 @@ class Sandstorm(Event):
             name="Tempestade de Areia",
             type="Sandstorm",
             severity=3,
-            duration_ticks=random.randint(6, 72),
+            duration_ticks=rng.randint(6, 72),
         )
 
     def apply(self, storage: DataStorage):
@@ -74,7 +74,7 @@ class EventManager(GenericManager):
                 self._active_event.do()
         else:
             # Rola para novo evento climático
-            roll = random.random()
+            roll = rng.random()
             if roll < 0.03:
                 evt = ColdFront()
                 self._active_event = evt       # atribui antes de storage para dashboard consistente
@@ -104,8 +104,8 @@ class EventManager(GenericManager):
 
         # Rola falhas de equipamento (0.5% por módulo ativo)
         for mod in module_manager.active_modules():
-            if random.random() < 0.005:
-                repair_ticks = random.randint(2, 12)
+            if rng.random() < 0.005:
+                repair_ticks = rng.randint(2, 12)
                 fail = EquipmentFailure(mod, repair_ticks)
                 fail.apply(storage)
                 self._failure_events.append(fail)

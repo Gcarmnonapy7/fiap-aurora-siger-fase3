@@ -6,7 +6,10 @@ Entrada: python main.py
 
 import threading
 
+from colonia_aurora.seed import rng
 from colonia_aurora.core.storage import DataStorage
+
+rng.set_seed(42)
 from colonia_aurora.core.sim_loop import SimulationLoop, THREAD_JOIN_TIMEOUT
 from colonia_aurora.sensors.sensors import SensorManager
 from colonia_aurora.modules.modules import (
@@ -18,7 +21,7 @@ from colonia_aurora.crew.crew import CrewMember, CrewManager
 from colonia_aurora.logger import Logger
 from colonia_aurora.display.dashboard import Dashboard
 
-TICK_RATE  = 0.5
+TICK_RATE  = 0.001
 SPAWN_PROB = 0.02
 SOL_TICKS  = 24
 

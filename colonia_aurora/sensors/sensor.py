@@ -1,4 +1,4 @@
-import random
+from colonia_aurora.seed import rng
 from colonia_aurora.core.item import Item
 
 
@@ -17,7 +17,7 @@ class Sensor(Item):
         return self.current_val < other.current_val
 
     def do(self) -> float:
-        self.current_val += random.uniform(-self.variation, self.variation)
+        self.current_val += rng.uniform(-self.variation, self.variation)
         self.current_val = max(self.min_val, min(self.max_val, self.current_val))
         return self.current_val
 

@@ -11,7 +11,8 @@ Sair:   Q ou Ctrl+C
 Compatível: Linux, macOS, Windows 10+ (CMD/PowerShell/Windows Terminal)
 """
 
-import os, sys, time, math, random, threading
+import os, sys, time, math, threading
+from colonia_aurora.seed import rng
 from collections import deque
 
 # ─── ANSI ─────────────────────────────────────────────────────────────────────
@@ -177,11 +178,11 @@ class Sim:
             day_phase = (math.cos(angle - math.pi) + 1) / 2
 
             # Sensores
-            self.temperature = round(-30 + 10*math.sin(t*0.1) + random.uniform(-1,1), 1)
-            self.wind_speed  = round(max(0, 8 + 5*math.sin(t*0.07) + random.uniform(-1,1)), 1)
-            self.solar_irrad = round(max(0, 350*day_phase + random.uniform(-20,20)), 0)
+            self.temperature = round(-30 + 10*math.sin(t*0.1) + rng.uniform(-1,1), 1)
+            self.wind_speed  = round(max(0, 8 + 5*math.sin(t*0.07) + rng.uniform(-1,1)), 1)
+            self.solar_irrad = round(max(0, 350*day_phase + rng.uniform(-20,20)), 0)
             self.day_phase   = round(day_phase, 2)
-            self.dust        = round(random.uniform(0.05, 0.3), 2)
+            self.dust        = round(rng.uniform(0.05, 0.3), 2)
             self.wind_hist.append(self.wind_speed)
             self.solar_hist.append(self.solar_irrad)
 
@@ -191,10 +192,10 @@ class Sim:
                 if self.event_ticks == 0:
                     self.event_log.append(f"[T{t:04d}] ✓ Evento encerrado: {self.event}")
                     self.event = None
-            elif random.random() < 0.04:
+            elif rng.random() < 0.04:
                 opts = ["❄ Frente Fria","🌪 Tempestade","⚠ Falha: Solar","⚠ Falha: Comms"]
-                self.event = random.choice(opts)
-                self.event_ticks = random.randint(6, 18)
+                self.event = rng.choice(opts)
+                self.event_ticks = rng.randint(6, 18)
                 self.event_log.append(f"[T{t:04d}] ⚡ NOVO: {self.event} (duração: {self.event_ticks} ticks)")
                 if "Tempestade" in self.event:
                     self.solar_irrad *= 0.2
@@ -210,11 +211,11 @@ class Sim:
 
             # Consumo
             active = [m for m in self.mods if m[6]]
-            self.consumed = round(sum(m[4] for m in active) + random.uniform(-2, 2), 1)
+            self.consumed = round(sum(m[4] for m in active) + rng.uniform(-2, 2), 1)
 
             # Bateria
             delta = (self.generated - self.consumed) * 0.01
-            self.battery = max(0, min(100, self.battery + delta + random.uniform(-0.3, 0.3)))
+            self.battery = max(0, min(100, self.battery + delta + rng.uniform(-0.3, 0.3)))
             self.bat_hist.append(self.battery)
             self.gen_hist.append(self.generated)
             self.con_hist.append(self.consumed)
